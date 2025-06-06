@@ -1,0 +1,2950 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<script>
+    if (localStorage.getItem('isLoggedIn') !== 'true') {
+        window.location.href = '/login.html';
+    }
+</script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simulador de Batalla Naval (MVP v1.55 - Mensaje Inicial Mejorado)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            background-color: #1a202c;
+            color: #e2e8f0;
+            min-height: 100vh;
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            overflow: hidden;
+        }
+        #app-container {
+            display: grid;
+            grid-template-areas:
+                "header header"
+                "sidebar main"
+                "sidebar footer";
+            grid-template-rows: auto 1fr auto;
+            grid-template-columns: 360px 1fr; /* Sidebar width */
+            width: 100vw;
+            height: 100vh;
+            gap: 0.5rem;
+            padding: 0.5rem;
+            box-sizing: border-box;
+        }
+
+        .header-controls {
+            grid-area: header;
+            background-color: #2d3748;
+            padding: 0.5rem 0.75rem;
+            border-radius: 0.5rem;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.2);
+            display: flex;
+            justify-content: space-around; 
+            align-items: center;
+            gap: 0.5rem; 
+            flex-wrap: wrap; 
+        }
+
+        .sidebar {
+            grid-area: sidebar;
+            background-color: #2d3748;
+            padding: 1rem;
+            border-radius: 0.5rem;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.2);
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+            overflow-y: auto; 
+            scroll-behavior: smooth; 
+        }
+
+        .main-content {
+            grid-area: main;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background-color: #4a5568;
+            border-radius: 0.5rem;
+            overflow: hidden;
+            position: relative;
+        }
+        canvas {
+            border: 1px solid #718096;
+            background-color: #003366;
+            border-radius: 0.375rem;
+            display: block;
+            cursor: grab;
+            width: 100%;
+            height: 100%;
+        }
+        canvas:active {
+            cursor: grabbing;
+        }
+        #wind-intensity-text-container {
+            position: absolute;
+            top: 80px;
+            right: 20px;
+            font-size: 0.8rem; 
+            color: white;
+            background-color: rgba(0,0,0,0.6);
+            padding: 2px 5px;
+            border-radius: 3px;
+            z-index: 10;
+        }
+
+
+        .footer-status {
+            grid-area: footer;
+            background-color: #2d3748;
+            padding: 0.75rem;
+            border-radius: 0.5rem;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.2);
+            display: flex;
+            justify-content: space-around; 
+            align-items: center;
+            gap: 1rem; 
+        }
+        #cronometroTurno {
+            font-size: 1.2rem; 
+            font-weight: bold;
+            color: #f6e05e;
+            flex-shrink: 0; 
+        }
+        #mensajePrincipal {
+            font-size: 1.2rem; 
+            font-weight: 600; 
+            text-align: center;
+            flex-grow: 1; 
+            padding: 0 0.5rem; 
+            min-width: 200px; 
+        }
+
+
+        .control-group { display: flex; flex-direction: column; gap: 0.1rem; align-items: center;}
+        .control-group label { margin-bottom: 0.1rem; font-size: 0.85rem; white-space: nowrap;}
+        label { font-weight: 600; color: #a0aec0; font-size: 0.95rem; } 
+        select, button, input[type="number"], input[type="text"] {
+            padding: 0.4rem 0.5rem;
+            border: 1px solid #4a5568;
+            border-radius: 0.375rem;
+            font-size: 0.9rem; 
+            background-color: #1a202c;
+            color: #e2e8f0;
+            transition: all 0.2s ease-in-out;
+        }
+        select:hover, button:hover, input[type="number"]:hover, input[type="text"]:hover { border-color: #63b3ed; }
+
+        h1, h2, h3 { color: #90cdf4; }
+        h3 { font-size: 1.25rem; margin-bottom: 0.5rem;} 
+        .info-item { display: flex; justify-content: space-between; font-size: 0.9rem; margin-bottom: 0.1rem;}
+        .info-item span:first-child { font-weight: bold; color: #a0aec0; }
+        .info-item span:last-child { color: #63b3ed; }
+        .mast-health-critical { color: #f56565 !important; }
+        .mast-health-medium { color: #f6e05e !important; }
+        .mast-fallen { text-decoration: line-through; color: #718096 !important; }
+
+        .fatiga-alta { color: #f56565 !important; }
+        .orden-confirmada-jugador { border: 2px solid #68d391 !important; background-color: #38a169 !important; }
+        .rudder-damaged-text { color: #e53e3e !important; font-weight: bold; }
+        .speed-reduced-text { color: #f6e05e; }
+        .tripulacion-baja { color: #f56565 !important; } 
+
+
+        .cmd-button-group { display: flex; gap: 0.25rem; align-items: center; flex-wrap: wrap; justify-content: center;}
+        .cmd-button {
+            background-color: #4a5568;
+            color: #e2e8f0;
+            border: 1px solid #718096;
+            padding: 0.4rem 0.6rem;
+            border-radius: 0.375rem;
+            font-size: 0.9rem; 
+            font-weight: bold;
+            min-width: 30px;
+            text-align: center;
+            cursor: pointer;
+            transition: background-color 0.2s, border-color 0.2s, box-shadow 0.2s;
+        }
+        .cmd-button.orden-activa {
+            background-color: #FBBF24;
+            color: #1F2937;
+            border: 2px solid #F59E0B;
+            box-shadow: 0 0 12px 3px #FBBF24, 0 0 8px 1px #FDE68A inset;
+            transform: scale(1.05);
+        }
+        .cmd-button.estado-actual {
+             background-color: #3182ce;
+            color: white;
+            border-color: #63b3ed;
+        }
+        .cmd-button:hover:not(.orden-activa):not(.estado-actual):not(:disabled) {
+            background-color: #718096;
+            border-color: #a0aec0;
+        }
+        .cmd-button.orden-disparo-activa {
+            box-shadow: 0 0 8px #f6e05e, 0 0 5px #f6e05e inset;
+            border: 1px solid #f6e05e;
+        }
+        .cmd-button:disabled {
+            background-color: #374151;
+            color: #9ca3af;
+            border-color: #4b5563;
+            cursor: not-allowed;
+            opacity: 0.7;
+        }
+        
+        #distanciaObjetivoInfoContainer { 
+           margin-top: 0.5rem; 
+        }
+        #distanciaObjetivoInfo { 
+            padding: 0.5rem; 
+            background-color: rgba(45,55,72,0.8); 
+            border-radius: 0.375rem; 
+            color: white; 
+            font-size: 0.9rem; 
+            text-align: center; 
+        }
+
+        #app-container button {
+            background-color: #3182ce; color: white; font-weight: 600;
+        }
+        #app-container button:hover:not(:disabled) { background-color: #2b6cb0; }
+        #app-container button:disabled { background-color: #4a5568; color: #718096; cursor: not-allowed; }
+        #pausaJuego.paused { background-color: #f6e05e; color: #1a202c; }
+
+
+        #turnReportPanel {
+            background-color: #1e293b;
+            border: 1px solid #334155;
+            border-radius: 0.375rem;
+            padding: 0.75rem;
+            height: 150px;
+            overflow-y: auto;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 0.85rem; 
+            color: #cbd5e1;
+            scroll-behavior: smooth; 
+            position: relative; /* Asegura que offsetTop de los hijos sea relativo a este panel */
+        }
+        #turnReportPanel p {
+            margin-bottom: 0.3rem;
+            line-height: 1.4;
+            border-bottom: 1px dashed #334155;
+            padding-bottom: 0.3rem;
+        }
+        #turnReportPanel p:last-child {
+            border-bottom: none;
+        }
+        .header-controls .control-group select { min-width: 110px; font-size:0.85rem; padding: 0.3rem 0.4rem;}
+        .header-controls .cmd-button-group button { padding: 0.4rem 0.5rem; font-size:0.85rem; }
+        .header-controls .cmd-button { padding: 0.4rem 0.5rem; font-size:0.85rem; } 
+        #cancelarDisparo { min-width: 25px !important; padding: 0.3rem 0.4rem !important; }
+
+    </style>
+</head>
+<body>
+    <div id="app-container">
+        <div class="header-controls">
+            <!-- Controles de Velamen y Timón -->
+            <div class="control-group">
+                <label>Velamen:</label>
+                <div class="cmd-button-group" id="velamen-controls">
+                    <button data-velamen="NV" class="cmd-button">NV</button>
+                    <button data-velamen="PV" class="cmd-button">PV</button>
+                    <button data-velamen="MV" class="cmd-button">MV</button>
+                    <button data-velamen="TV" class="cmd-button">TV</button>
+                </div>
+            </div>
+            <div class="control-group">
+                <label>Timón:</label>
+                <div class="cmd-button-group" id="timon-controls">
+                    <button data-timon="-4" class="cmd-button">T◀</button>
+                    <button data-timon="-3" class="cmd-button">-3</button>
+                    <button data-timon="-2" class="cmd-button">-2</button>
+                    <button data-timon="-1" class="cmd-button">-1</button>
+                    <button data-timon="0"  class="cmd-button">●</button>
+                    <button data-timon="1"  class="cmd-button">+1</button>
+                    <button data-timon="2"  class="cmd-button">+2</button>
+                    <button data-timon="3"  class="cmd-button">+3</button>
+                    <button data-timon="4"  class="cmd-button">T▶</button>
+                </div>
+            </div>
+            <!-- Comandos de Disparo -->
+            <div class="control-group">
+                <label for="apuntarA">Apuntar:</label>
+                <select id="apuntarA">
+                    <option value="CASCO">Casco</option>
+                    <option value="APAREJO">Aparejo</option>
+                </select>
+            </div>
+            <div class="control-group">
+                <label for="seccionBanda">Sección:</label>
+                <select id="seccionBanda">
+                    <option value="COMPLETA">Completa</option>
+                    <option value="PROA">Media Proa</option>
+                    <option value="POPA">Media Popa</option>
+                </select>
+            </div>
+            <div class="control-group">
+                <label for="municionSelect">Cargar (Prox.):</label>
+                <select id="municionSelect">
+                    <option value="BALA_REDONDA">B.Redonda</option>
+                    <option value="METRALLA">Metralla</option>
+                    <option value="DOBLE_BALA">D.Bala</option>
+                </select>
+            </div>
+            <div class="cmd-button-group">
+                <button id="dispararBabor" class="cmd-button">Babor</button>
+                <button id="dispararEstribor" class="cmd-button">Estribor</button>
+                <button id="cancelarDisparo" class="bg-red-600 hover:bg-red-700 cmd-button">X</button>
+            </div>
+        </div>
+
+        <div class="sidebar">
+            <!-- 1. Informe del Turno (Informe) -->
+            <div>
+                <h3 class="text-lg font-semibold">Informe del Turno</h3>
+                <div id="turnReportPanel"></div>
+            </div>
+            <hr class="border-gray-700 my-1">
+
+            <!-- 2. Pasa el cursor sobre el objetivo -->
+            <div id="distanciaObjetivoInfoContainer">
+                 <h3 class="text-lg font-semibold">Información Táctica</h3>
+                <div id="distanciaObjetivoInfo">Pasa el cursor sobre el objetivo...</div>
+            </div>
+            <hr class="border-gray-700 my-1">
+
+            <!-- 3. Objetivo Info -->
+            <div>
+                <h3 class="text-lg font-semibold">Objetivo: <span id="nombreObjetivo">Couronne</span></h3>
+                <div class="info-item"><span>Salud Casco:</span><span id="objetivoSaludCasco"></span></div>
+                <div class="info-item"><span>Tripulación (IA):</span><span id="aiTripulacion">875/875</span></div>
+                <div class="info-item"><span>Aparejo (General):</span><span id="objetivoSaludAparejoGeneral">INTACTO</span></div>
+                <div class="info-item"><span>Cañones Babor (IA):</span><span id="aiCanonesBabor">52/52</span></div>
+                <div class="info-item"><span>Cañones Estribor (IA):</span><span id="aiCanonesEstribor">52/52</span></div>
+                <div class="info-item"><span>Timón (IA):</span><span id="aiEstadoTimon">OPERATIVO</span></div>
+                <div class="info-item"><span>Eficiencia Velocidad (IA):</span><span id="aiEficienciaVelocidad" class="speed-reduced-text">100%</span></div>
+                <div class="info-item"><span>Experiencia Tripulación (IA):</span><span id="aiExperiencia">NORMAL</span></div>
+                <div class="info-item"><span>Velamen Efectivo (IA):</span><span id="aiVelamenEfectivo" class="text-yellow-400"></span></div>
+                <div class="info-item"><span>Fatiga (IA):</span><span id="aiFatiga">0%</span></div>
+                <div class="info-item"><span>Órdenes Corsario:</span><span id="corsarioOrdenesConfirmadas" class="text-red-400">NO</span></div>
+            </div>
+            <hr class="border-gray-700 my-1">
+            
+            <!-- 4. Mi Navío Info -->
+            <div>
+                <h3 class="text-lg font-semibold">Navío: <span id="navioNombre"></span></h3>
+                <div class="info-item"><span>Salud Casco:</span><span id="miNavioSaludCasco">100%</span></div>
+                <div class="info-item"><span>Tripulación:</span><span id="miNavioTripulacion">875/875</span></div>
+                <div class="info-item"><span>Salud Trinquete:</span><span id="miNavioSaludTrinquete">100%</span></div>
+                <div class="info-item"><span>Salud Mayor:</span><span id="miNavioSaludMayor">100%</span></div>
+                <div class="info-item"><span>Salud Mesana:</span><span id="miNavioSaludMesana">100%</span></div>
+                <div class="info-item"><span>Cañones Babor:</span><span id="miNavioCanonesBabor">52/52</span></div>
+                <div class="info-item"><span>Cañones Estribor:</span><span id="miNavioCanonesEstribor">52/52</span></div>
+                <div class="info-item"><span>Timón:</span><span id="miNavioEstadoTimon">OPERATIVO</span></div>
+                <div class="info-item"><span>Eficiencia Velocidad:</span><span id="miNavioEficienciaVelocidad" class="speed-reduced-text">100%</span></div>
+                <div class="info-item"><span>Experiencia Tripulación:</span><span id="miNavioExperiencia">NORMAL</span></div>
+                <div class="info-item"><span>Munición Cargada:</span><span id="miNavioMunicionCargada">B.REDONDA</span></div>
+                <div class="info-item"><span>Cargando (Próx.):</span><span id="miNavioMunicionEnCarga">B.REDONDA</span></div>
+                <hr class="border-gray-700 my-1">
+                <div class="info-item"><span>Pos X (Global):</span><span id="navioGlobalPosX"></span></div>
+                <div class="info-item"><span>Pos Y (Global):</span><span id="navioGlobalPosY"></span></div>
+                <div class="info-item"><span>Orientación:</span><span id="navioOrientacion"></span></div>
+                <div class="info-item"><span>Velamen (Actual):</span><span id="navioVelamen"></span></div>
+                <div class="info-item"><span>Velamen (Efectivo):</span><span id="navioVelamenEfectivo" class="text-yellow-400"></span></div>
+                <div class="info-item"><span>Timón (Actual):</span><span id="navioTimonPuntos"></span></div>
+                <div class="info-item"><span>Timón (Anterior):</span><span id="navioTimonAnterior"></span></div>
+                <div class="info-item"><span>Fatiga Tripulación:</span><span id="navioFatiga">0%</span></div>
+                <div class="info-item"><span>Orden Disparo:</span><span id="navioOrdenDisparo">NINGUNA</span></div>
+                <div class="info-item"><span>Órdenes Confirmadas:</span><span id="jugadorOrdenesConfirmadas" class="text-red-400">NO</span></div>
+            </div>
+            <hr class="border-gray-700 my-1">
+
+            <!-- 5. Configuración Partida (permanece al final) -->
+            <div id="configuracionPartidaContainer">
+                <h3 class="text-lg font-semibold">Configuración Partida</h3>
+                <div class="control-group">
+                    <label for="duracionTurnoInput">Duración Turno (seg):</label>
+                    <input type="number" id="duracionTurnoInput" value="60" min="10" class="w-full">
+                </div>
+                <div class="control-group mt-2">
+                    <label for="playerCrewExperience">Experiencia Tripulación (Sovereign):</label>
+                    <select id="playerCrewExperience" class="w-full">
+                        <option value="NORMAL">Normal</option>
+                        <option value="NOVATA">Novata</option>
+                        <option value="VETERANA">Veterana</option>
+                    </select>
+                </div>
+                <div class="control-group mt-2">
+                    <label for="aiCrewExperience">Experiencia Tripulación (Couronne):</label>
+                    <select id="aiCrewExperience" class="w-full">
+                        <option value="NORMAL">Normal</option>
+                        <option value="NOVATA">Novata</option>
+                        <option value="VETERANA">Veterana</option>
+                    </select>
+                </div>
+                <div class="control-group mt-2">
+                    <label for="windIntensitySetting">Intensidad del Viento:</label>
+                    <select id="windIntensitySetting" class="w-full">
+                        <option value="MEDIA">Media</option>
+                        <option value="CALMA">Calma</option>
+                        <option value="FUERTE">Fuerte</option>
+                    </select>
+                </div>
+                <button id="iniciarConfig" class="w-full mt-1">Aplicar Config.</button>
+            </div>
+        </div>
+
+        <div class="main-content">
+            <canvas id="gameCanvas"></canvas>
+            <div id="wind-intensity-text-container">
+                <span id="wind-intensity-text">MEDIA</span>
+            </div>
+        </div>
+
+        <div class="footer-status">
+            <div id="cronometroTurno">Tiempo: --:--</div>
+            <p id="mensajePrincipal" class="text-lg font-semibold text-gray-400 text-center flex-grow mx-4"></p>
+            <button id="pausaJuego" class="px-4 py-2">Pausar</button>
+            <button id="confirmarOrdenesJugador" class="px-4 py-2 bg-green-600 hover:bg-green-700">Confirmar Órdenes</button>
+            <button id="pasarTurno" class="px-6 py-2">Pasar Turno</button>
+        </div>
+    </div>
+
+    <script>
+        // --- System Constants and Definitions ---
+        const TRIPULACION_INICIAL_ESTANDAR = 875; 
+        const BAJAS_METRALLA_FACTOR = 0.20;      
+        const BAJAS_BALA_REDONDA_CASCO_FACTOR = 0.18; 
+        const BAJAS_CAIDA_MASTIL_PORCENTAJE = 0.05; 
+        const BAJAS_COLISION_FACTOR = 0.08;         
+        const BAJAS_BARRIDO_PROA_MULTIPLICADOR = 1.5; 
+        const BAJAS_BARRIDO_POPA_MULTIPLICADOR = 2.0; 
+        const BAJAS_DESTRUCCION_CASCO_PORCENTAJE = 0.25; 
+
+
+        const DISTANCIA_MOVIMIENTO_NV = 0;
+        const DISTANCIA_MOVIMIENTO_PV = 20;
+        const DISTANCIA_MOVIMIENTO_MV = 40;
+        const DISTANCIA_MOVIMIENTO_TV = 60;
+
+        const GRADOS_BASE_POR_PUNTO_TIMON_A_PV = { '1': 10, '2': 20, '3': 30, '4': 45 };
+
+        const FACTOR_EFECTIVIDAD_TIMON_MV = 0.7;
+        const FACTOR_EFECTIVIDAD_TIMON_TV = 0.4;
+
+        const LIMITE_CAMBIO_TIMON_PV = 4;
+        const LIMITE_CAMBIO_TIMON_MV = 3;
+        const LIMITE_CAMBIO_TIMON_TV = 2;
+
+        const LIMITE_AMPLITUD_TIMON_GRANDE_PV = 4;
+        const LIMITE_AMPLITUD_TIMON_GRANDE_MV = 4;
+        const LIMITE_AMPLITUD_TIMON_GRANDE_TV = 3;
+
+        const FATIGA_ACCION_NORMAL = 10;
+        const FATIGA_ACCION_ESPECIAL_VELA_NV_PV = 20;
+        const FATIGA_RECUPERACION_TURNO_SIN_ACCION = 20;
+
+        const UMBRAL_PENALIZACION_FATIGA_NOVATA = 35;
+        const UMBRAL_PENALIZACION_FATIGA_NORMAL = 50;
+        const UMBRAL_PENALIZACION_FATIGA_VETERANA = 85;
+
+
+        const MAX_VISUAL_RANGE_ARC = 350;
+        const ARC_COLOR_INACTIVA_JUGADOR_BABOR = "rgba(100, 100, 255, 0.1)";
+        const ARC_COLOR_INACTIVA_JUGADOR_ESTRIBOR = "rgba(100, 100, 255, 0.1)";
+        const ARC_COLOR_ACTIVA_JUGADOR = "rgba(0, 100, 255, 0.3)";
+
+        const ARC_COLOR_INACTIVA_AI_BABOR = "rgba(255, 100, 100, 0.1)";
+        const ARC_COLOR_INACTIVA_AI_ESTRIBOR = "rgba(255, 100, 100, 0.1)";
+        const ARC_COLOR_ACTIVA_AI = "rgba(255, 0, 0, 0.3)";
+        const ARC_STROKE_COLOR = "rgba(200, 200, 200, 0.3)";
+
+        const ARC_E_MEDIA_PROA_INICIO = 45;
+        const ARC_E_MEDIA_PROA_FIN = 70;
+        const ARC_E_COMPLETA_INICIO = 70;
+        const ARC_E_COMPLETA_FIN = 110;
+        const ARC_E_MEDIA_POPA_INICIO = 110;
+        const ARC_E_MEDIA_POPA_FIN = 135;
+
+        const ARC_B_MEDIA_POPA_INICIO = 225;
+        const ARC_B_MEDIA_POPA_FIN = 250;
+        const ARC_B_COMPLETA_INICIO = 250;
+        const ARC_B_COMPLETA_FIN = 290;
+        const ARC_B_MEDIA_PROA_INICIO = 290;
+        const ARC_B_MEDIA_PROA_FIN = 315;
+
+        const MAX_HULL_PLAYER = 2400;
+        const BASE_MAX_RIGGING_HEALTH = 1200;
+        const MAX_SALUD_MASTIL_MAYOR_FACTOR = 0.45;
+        const MAX_SALUD_MASTIL_TRINQUETE_FACTOR = 0.30;
+        const MAX_SALUD_MASTIL_MESANA_FACTOR = 0.25;
+
+
+        const CAPITAL_SHIP_DAMAGE_MULTIPLIER = 18;
+        const BASE_COLLISION_DAMAGE = 30;
+
+        const RAKE_ARC_DEGREES = 15;
+        const BOW_RAKE_MIN_ANGLE = 360 - RAKE_ARC_DEGREES;
+        const BOW_RAKE_MAX_ANGLE = RAKE_ARC_DEGREES;
+        const STERN_RAKE_MIN_ANGLE = 180 - RAKE_ARC_DEGREES;
+        const STERN_RAKE_MAX_ANGLE = 180 + RAKE_ARC_DEGREES;
+
+        const STERN_RAKE_MULTIPLIER = 3;
+        const BOW_RAKE_MULTIPLIER = 2.5;
+        const RUDDER_DAMAGE_CHANCE_RAKE = 0.20; 
+        const MAST_DAMAGE_CHANCE_RAKE = 0.35;
+        const MAST_DAMAGE_BONUS_PERCENT_RAKE = 0.25;
+        
+        const BASE_RUDDER_DAMAGE_CHANCE_STERN_COLLISION = 0.25; 
+        const RUDDER_DAMAGE_BONUS_PER_SAIL_DIFFERENCE = 0.25; 
+        const MAX_RUDDER_DAMAGE_CHANCE_STERN_COLLISION = 0.75; 
+
+        const RIGGING_DAMAGE_COLLISION_FACTOR = 0.2;
+
+        let direccionVientoGrados = 0;
+        let intensidadViento = "MEDIA";
+        let currentTurnNumber = 0;
+        let windHasChangedThisGame = false;
+
+        const VELAMEN_ORDER = ['NV', 'PV', 'MV', 'TV'];
+        const VELAMEN_MAP = { 'NV': 0, 'PV': 1, 'MV': 2, 'TV': 3 };
+        const VELAMEN_MAP_REVERSE = { 0: 'NV', 1: 'PV', 2: 'MV', 3: 'TV' };
+        const DEBUG_COLLISION_POINTS = false;
+        const MOVEMENT_ANIMATION_DURATION = 1000; 
+
+
+        // --- Classes and Objects ---
+        class Navio {
+            constructor(nombre, x, y, orientacion, esSombra = false, esObjetivo = false) {
+                this.nombre = nombre;
+                this.globalX = x;
+                this.globalY = y;
+                this.orientacionActualGrados = orientacion;
+
+                this.startX = x;
+                this.startY = y;
+                this.startOrientacion = orientacion;
+                this.targetX = x;
+                this.targetY = y;
+                this.targetOrientacion = orientacion;
+
+                this.velamenActual = 'MV';
+                this.velamenAnteriorTurno = 'MV';
+                this.velamenEfectivoEnTurno = 'MV';
+                this.posicionTimonActualPuntos = 0;
+                this.posicionTimonAnteriorPuntos = 0;
+                this.tamano = { ancho: 20, largo: 60 }; 
+                this.ordenVelamen = 'MV'; 
+                this.ordenTimon = 0;    
+                this.esSombra = esSombra; 
+                this.esObjetivo = esObjetivo; 
+                this.ordenDisparo = null;     
+                this.ordenDisparoLista = false; 
+                this.ordenesConfirmadas = false; 
+                this.fatigaTripulacion = 0; 
+
+                this.tripulacionInicial = TRIPULACION_INICIAL_ESTANDAR; 
+                this.tripulacionOperativa = TRIPULACION_INICIAL_ESTANDAR; 
+
+                this.maxCanonesPorBanda = 52; 
+                this.canonesBaborOperativos = this.maxCanonesPorBanda;
+                this.canonesEstriborOperativos = this.maxCanonesPorBanda;
+                this.rudderDamaged = false; 
+                this.eficienciaVelocidadActual = 1.0; 
+                this.crewExperience = 'NORMAL'; 
+                this.cascoDestruido = false; 
+                this.isSunk = false;         
+                this.haColisionadoEsteTurno = false;
+                this.forzarSoloViraje = false; 
+
+                this.maxSaludMastilMayor = Math.round(BASE_MAX_RIGGING_HEALTH * MAX_SALUD_MASTIL_MAYOR_FACTOR);
+                this.maxSaludMastilTrinquete = Math.round(BASE_MAX_RIGGING_HEALTH * MAX_SALUD_MASTIL_TRINQUETE_FACTOR);
+                this.maxSaludMastilMesana = Math.round(BASE_MAX_RIGGING_HEALTH * MAX_SALUD_MASTIL_MESANA_FACTOR);
+
+                this.saludMastilMayor = this.maxSaludMastilMayor;
+                this.saludMastilTrinquete = this.maxSaludMastilTrinquete;
+                this.saludMastilMesana = this.maxSaludMastilMesana;
+
+                this.mastilMayorCaido = false;
+                this.mastilTrinqueteCaido = false;
+                this.mastilMesanaCaido = false;
+
+                this.proaX = this.globalX; 
+                this.proaY = this.globalY; 
+                this.popaX = this.globalX; 
+                this.popaY = this.globalY; 
+                this.collisionPointRadius = this.tamano.ancho * 0.6; 
+                this.actualizarPuntosDeColision();
+
+                this.municionCargada = 'BALA_REDONDA'; 
+                this.municionParaSiguienteCarga = 'BALA_REDONDA'; 
+
+
+                if (this.nombre === "Sovereign of the Seas" || this.esObjetivo) { 
+                    this.saludCasco = MAX_HULL_PLAYER;
+                    this.maxSaludCasco = MAX_HULL_PLAYER;
+                } else { 
+                    this.saludCasco = 100; 
+                    this.maxSaludCasco = 100;
+                }
+                if (this.esObjetivo && this.nombre !== "Couronne") { 
+                    this.nombre = "Couronne";
+                }
+            }
+
+            actualizarPuntosDeColision() {
+                const orientacionRadianes = gradosARadianes(this.orientacionActualGrados);
+                const mitadLargo = this.tamano.largo / 2;
+
+                this.proaX = this.globalX + mitadLargo * Math.sin(orientacionRadianes);
+                this.proaY = this.globalY - mitadLargo * Math.cos(orientacionRadianes);
+
+                this.popaX = this.globalX - mitadLargo * Math.sin(orientacionRadianes);
+                this.popaY = this.globalY + mitadLargo * Math.cos(orientacionRadianes);
+            }
+
+            getCollisionPoints() { 
+                return [
+                    { x: this.globalX, y: this.globalY, type: 'CENTER', radius: this.collisionPointRadius },
+                    { x: this.proaX, y: this.proaY, type: 'BOW', radius: this.collisionPointRadius },
+                    { x: this.popaX, y: this.popaY, type: 'STERN', radius: this.collisionPointRadius }
+                ];
+            }
+
+
+            dibujar(ctx, camX, camY) { 
+                const localX = this.globalX - camX + canvas.width / 2;
+                const localY = this.globalY - camY + canvas.height / 2;
+
+                ctx.save();
+                ctx.translate(localX, localY);
+                ctx.rotate(gradosARadianes(this.orientacionActualGrados));
+
+                let hullColor = '#A0522D'; 
+                let deckColor = '#D2B48C'; 
+                let mastColor = '#8B4513'; 
+                let sailColor = 'rgba(245, 245, 245, 0.9)'; 
+
+                if (this.isSunk) { 
+                    ctx.globalAlpha = 0.5;
+                    hullColor = '#555555'; 
+                    deckColor = '#444444';
+                    mastColor = '#333333';
+                } else if (this.esSombra) { 
+                    ctx.globalAlpha = 0.3;
+                    hullColor = '#A0AEC0'; 
+                    deckColor = '#B0C4DE'; 
+                    mastColor = '#778899'; 
+                    sailColor = 'rgba(200, 200, 220, 0.3)';
+                } else if (this.esObjetivo) { 
+                    ctx.globalAlpha = 1.0;
+                    hullColor = '#800000'; 
+                    deckColor = '#BC8F8F'; 
+                } else { 
+                    ctx.globalAlpha = 1.0;
+                }
+
+                const L = this.tamano.largo; 
+                const W = this.tamano.ancho; 
+
+                ctx.fillStyle = hullColor;
+                ctx.beginPath();
+                ctx.moveTo(0, -L / 2); 
+                ctx.bezierCurveTo(W * 0.4, -L * 0.4, W * 0.6, -L * 0.1, W * 0.6, 0); 
+                ctx.lineTo(W * 0.5, L * 0.4); 
+                ctx.quadraticCurveTo(W * 0.4, L * 0.5, 0, L * 0.5 + L*0.05); 
+                ctx.quadraticCurveTo(-W * 0.4, L * 0.5, -W * 0.5, L * 0.4); 
+                ctx.lineTo(-W * 0.6, 0); 
+                ctx.bezierCurveTo(-W * 0.6, -L * 0.1, -W * 0.4, -L * 0.4, 0, -L / 2); 
+                ctx.closePath();
+                ctx.fill();
+                ctx.strokeStyle = this.isSunk ? "#333" : "#5C4033"; 
+                ctx.lineWidth = 1;
+                ctx.stroke();
+
+                if (!this.esSombra && !this.isSunk) {
+                    ctx.fillStyle = deckColor;
+                    ctx.beginPath();
+                    ctx.moveTo(0, -L / 2 * 0.8); 
+                    ctx.bezierCurveTo(W * 0.3, -L * 0.35, W * 0.5, -L * 0.05, W * 0.5, 0);
+                    ctx.lineTo(W * 0.4, L * 0.35);  
+                    ctx.quadraticCurveTo(W * 0.3, L * 0.4, 0, L * 0.4 + L*0.03);
+                    ctx.quadraticCurveTo(-W * 0.3, L * 0.4, -W * 0.4, L * 0.35);
+                    ctx.lineTo(-W * 0.5, 0);
+                    ctx.bezierCurveTo(-W * 0.5, -L * 0.05, -W * 0.3, -L * 0.35, 0, -L / 2 * 0.8);
+                    ctx.closePath();
+                    ctx.fill();
+                }
+
+                if (!this.esSombra && !this.isSunk) {
+                    ctx.fillStyle = mastColor;
+                    const mastWidth = Math.max(2, W * 0.08);
+
+                    const foreMastY = -L * 0.25; 
+                    const mainMastY = 0;       
+                    const mizzenMastY = L * 0.28;  
+
+                    const drawMastAndSails = (mastY, baseSailHeight, topSailHeightFactor, velamen, mastCaido) => {
+                        if (mastCaido) return; 
+
+                        ctx.fillRect(-mastWidth / 2, mastY - L * 0.2, mastWidth, L * 0.4); 
+
+                        if (velamen === 'NV') return; 
+
+                        let sailScale = 1.0;
+                        let numSails = 2; 
+
+                        if (velamen === 'PV') { 
+                            sailScale = 0.5;
+                            numSails = 1; 
+                        } else if (velamen === 'MV') { 
+                            sailScale = 0.75;
+                        } else if (velamen === 'TV') { 
+                            sailScale = 1.0;
+                            numSails = 2; 
+                        }
+
+                        ctx.fillStyle = sailColor;
+                        ctx.strokeStyle = 'grey';
+                        ctx.lineWidth = 0.5;
+
+                        if (numSails >= 1 && velamen !== 'PV') { 
+                            const sailHeight = baseSailHeight * sailScale;
+                            const sailWidth = W * 1.8 * sailScale; 
+                            ctx.beginPath();
+                            ctx.moveTo(-sailWidth / 2, mastY - sailHeight * 0.1); 
+                            ctx.lineTo(sailWidth / 2, mastY - sailHeight * 0.1);  
+                            ctx.lineTo(sailWidth / 2 * 0.9, mastY + sailHeight * 0.9); 
+                            ctx.lineTo(-sailWidth / 2 * 0.9, mastY + sailHeight * 0.9); 
+                            ctx.closePath();
+                            ctx.fill();
+                            ctx.stroke();
+                        }
+
+                        if (numSails >= (velamen === 'PV' ? 1 : 2) ) { 
+                            const topSailHeight = baseSailHeight * topSailHeightFactor * sailScale;
+                            const topSailWidth = W * 1.5 * sailScale;
+                            const topSailY = mastY - L * 0.15; 
+                             ctx.beginPath();
+                            ctx.moveTo(-topSailWidth / 2, topSailY - topSailHeight * 0.1);
+                            ctx.lineTo(topSailWidth / 2, topSailY - topSailHeight * 0.1);
+                            ctx.lineTo(topSailWidth / 2 * 0.9, topSailY + topSailHeight * 0.9);
+                            ctx.lineTo(-topSailWidth / 2 * 0.9, topSailY + topSailHeight * 0.9);
+                            ctx.closePath();
+                            ctx.fill();
+                            ctx.stroke();
+                        }
+                    };
+
+                    drawMastAndSails(foreMastY, L * 0.25, 0.7, this.velamenEfectivoEnTurno, this.mastilTrinqueteCaido);  
+                    drawMastAndSails(mainMastY, L * 0.3, 0.8, this.velamenEfectivoEnTurno, this.mastilMayorCaido);   
+                    drawMastAndSails(mizzenMastY, L * 0.2, 0.6, this.velamenEfectivoEnTurno, this.mastilMesanaCaido); 
+                }
+
+                if (!this.esSombra && !this.isSunk && !this.mastilTrinqueteCaido) { 
+                    ctx.strokeStyle = mastColor;
+                    ctx.lineWidth = Math.max(2, W * 0.1);
+                    ctx.beginPath();
+                    ctx.moveTo(0, -L / 2);
+                    ctx.lineTo(0, -L / 2 - L * 0.20); 
+                    ctx.stroke();
+                }
+
+                if (DEBUG_COLLISION_POINTS && !this.esSombra) {
+                    ctx.fillStyle = 'rgba(255, 0, 255, 0.5)';
+                    const points = this.getCollisionPoints();
+                    points.forEach(p => {
+                        const pLocalX = p.x - this.globalX; 
+                        const pLocalY = p.y - this.globalY; 
+                        ctx.beginPath();
+                        ctx.arc(pLocalX, pLocalY, p.radius, 0, 2 * Math.PI);
+                        ctx.fill();
+                    });
+                }
+                ctx.restore();
+            }
+
+            aplicarBajas(cantidadBajas, motivo) { 
+                if (this.isSunk || this.tripulacionOperativa <= 0) return;
+                const bajasReales = Math.min(this.tripulacionOperativa, Math.round(cantidadBajas)); 
+                if (bajasReales > 0) {
+                    this.tripulacionOperativa -= bajasReales;
+                    agregarAlReporte(`El ${this.nombre} sufre ${bajasReales} bajas ${motivo}. Tripulación restante: ${this.tripulacionOperativa}.`);
+                    if (this.tripulacionOperativa <= 0) {
+                        this.tripulacionOperativa = 0;
+                        agregarAlReporte(`¡Toda la tripulación del ${this.nombre} ha sido eliminada o está incapacitada!`);
+                    }
+                }
+            }
+
+
+            recibirDaño(cantidadDañoFlotante, tipoObjetivo, atacanteNombre, bandaImpactadaSiCasco = null, anguloRelativoImpactoEnObjetivo = null, infoColision = null, municionUsadaRealmente = null, esBarridoProa = false, esBarridoPopa = false) {
+                if (this.isSunk) return;
+
+                let logMsg = "";
+                let bajasEsteImpacto = 0; 
+
+                if (tipoObjetivo === 'CASCO') {
+                    const prevSaludCasco = this.saludCasco;
+                    let dañoRealAlCascoRedondeado = 0; 
+                    let dañoParaCalculoBajas = 0;      
+
+                    if (this.saludCasco > 0) {
+                        dañoParaCalculoBajas = Math.min(this.saludCasco, cantidadDañoFlotante);
+                        dañoRealAlCascoRedondeado = Math.min(Math.round(this.saludCasco), Math.round(cantidadDañoFlotante));
+                        
+                        if (dañoRealAlCascoRedondeado > 0) {
+                             this.saludCasco -= dañoRealAlCascoRedondeado;
+                             if (this.saludCasco < 0) this.saludCasco = 0;
+                        }
+                        
+                        logMsg = `El ${this.nombre} recibe ${dañoRealAlCascoRedondeado} de daño en el casco por ${atacanteNombre}.`;
+
+                        if (typeof municionUsadaRealmente === 'string') {
+                            if (municionUsadaRealmente === "METRALLA") {
+                                bajasEsteImpacto += dañoParaCalculoBajas * BAJAS_METRALLA_FACTOR;
+                            } else if (municionUsadaRealmente === "BALA_REDONDA") {
+                                bajasEsteImpacto += dañoParaCalculoBajas * BAJAS_BALA_REDONDA_CASCO_FACTOR;
+                            }
+                        }
+                    } else {
+                        logMsg = `El ${this.nombre} (casco ya destruido) es impactado en el casco por ${atacanteNombre} (daño potencial: ${Math.round(cantidadDañoFlotante)}).`;
+                    }
+
+                    if (bandaImpactadaSiCasco && (bandaImpactadaSiCasco === 'BABOR' || bandaImpactadaSiCasco === 'ESTRIBOR') && dañoRealAlCascoRedondeado > 0 && this.maxSaludCasco > 0) {
+                        const porcentajeDañoParaCañones = (dañoRealAlCascoRedondeado / this.maxSaludCasco) * 100;
+                        if (porcentajeDañoParaCañones >= 1) {
+                            let cañonesBasePerdidos = Math.floor(porcentajeDañoParaCañones / 2);
+                            if (Math.floor(porcentajeDañoParaCañones) % 2 === 1 && Math.random() < 0.5) {
+                                cañonesBasePerdidos++;
+                            } else if (porcentajeDañoParaCañones - Math.floor(porcentajeDañoParaCañones) >= 0.01 && Math.floor(porcentajeDañoParaCañones) % 2 === 1 && Math.random() < 0.5){
+                                cañonesBasePerdidos++;
+                            }
+                            let cañonesAfectadosKey = (bandaImpactadaSiCasco === 'BABOR') ? 'canonesBaborOperativos' : 'canonesEstriborOperativos';
+                            if (this[cañonesAfectadosKey] > 0) {
+                                const cañonesRealmenteDestruidos = Math.min(cañonesBasePerdidos, this[cañonesAfectadosKey]);
+                                if (cañonesRealmenteDestruidos > 0) {
+                                    this[cañonesAfectadosKey] -= cañonesRealmenteDestruidos;
+                                    logMsg += ` ¡${cañonesRealmenteDestruidos} cañones en ${bandaImpactadaSiCasco.toLowerCase()} destruidos!`;
+                                }
+                            }
+                        }
+                    }
+
+                    if (this.saludCasco <= 0 && !this.cascoDestruido) {
+                        this.cascoDestruido = true;
+                        logMsg += ` ¡El casco del ${this.nombre} ha sido comprometido!`;
+                        const bajasPorDestruccion = this.tripulacionOperativa * BAJAS_DESTRUCCION_CASCO_PORCENTAJE;
+                        if (bajasPorDestruccion > 0) {
+                            bajasEsteImpacto += bajasPorDestruccion;
+                        }
+                    }
+                    logMsg += ` Salud casco: ${(this.saludCasco / this.maxSaludCasco * 100).toFixed(0)}%.`;
+
+                } else if (tipoObjetivo === 'APAREJO') {
+                    let dañoTrinquete = 0, dañoMayor = 0, dañoMesana = 0;
+                    let reporteMástiles = "";
+                    let mastilCaidoEsteImpacto = false;
+                    let dañoAplicadoAparejo = Math.round(cantidadDañoFlotante);
+
+                    if (infoColision && infoColision.mastilAfectado) {
+                        const riggingDmgCollision = dañoAplicadoAparejo;
+                        if (infoColision.mastilAfectado === 'TRINQUETE' && !this.mastilTrinqueteCaido) dañoTrinquete = riggingDmgCollision;
+                        else if (infoColision.mastilAfectado === 'MAYOR' && !this.mastilMayorCaido) dañoMayor = riggingDmgCollision;
+                        else if (infoColision.mastilAfectado === 'MESANA' && !this.mastilMesanaCaido) dañoMesana = riggingDmgCollision;
+                        else {
+                           if (!this.mastilMayorCaido) dañoMayor = riggingDmgCollision * 0.5;
+                           if (!this.mastilTrinqueteCaido) dañoTrinquete = riggingDmgCollision * 0.25;
+                           if (!this.mastilMesanaCaido) dañoMesana = riggingDmgCollision * 0.25;
+                        }
+                    } else if (esBarridoProa) {
+                        if (!this.mastilTrinqueteCaido) dañoTrinquete = dañoAplicadoAparejo;
+                        else if (!this.mastilMayorCaido) dañoMayor = dañoAplicadoAparejo;
+                    } else if (esBarridoPopa) {
+                        if (!this.mastilMesanaCaido) dañoMesana = dañoAplicadoAparejo;
+                        else if (!this.mastilMayorCaido) dañoMayor = dañoAplicadoAparejo;
+                    } else if (anguloRelativoImpactoEnObjetivo !== null) {
+                        if ((anguloRelativoImpactoEnObjetivo >= 0 && anguloRelativoImpactoEnObjetivo < 75) || (anguloRelativoImpactoEnObjetivo > 285 && anguloRelativoImpactoEnObjetivo <= 360)) {
+                            if (!this.mastilTrinqueteCaido) dañoTrinquete = dañoAplicadoAparejo * 0.6;
+                            if (!this.mastilMayorCaido) dañoMayor = dañoAplicadoAparejo * 0.3;
+                            if (!this.mastilMesanaCaido) dañoMesana = dañoAplicadoAparejo * 0.1;
+                        } else if (anguloRelativoImpactoEnObjetivo >= 105 && anguloRelativoImpactoEnObjetivo < 255) {
+                            if (!this.mastilMesanaCaido) dañoMesana = dañoAplicadoAparejo * 0.6;
+                            if (!this.mastilMayorCaido) dañoMayor = dañoAplicadoAparejo * 0.3;
+                            if (!this.mastilTrinqueteCaido) dañoTrinquete = dañoAplicadoAparejo * 0.1;
+                        } else {
+                            if (!this.mastilMayorCaido) dañoMayor = dañoAplicadoAparejo * 0.5;
+                            if (!this.mastilTrinqueteCaido) dañoTrinquete = dañoAplicadoAparejo * 0.25;
+                            if (!this.mastilMesanaCaido) dañoMesana = dañoAplicadoAparejo * 0.25;
+                        }
+                    } else {
+                        if (!this.mastilMayorCaido) dañoMayor = dañoAplicadoAparejo * 0.4;
+                        if (!this.mastilTrinqueteCaido) dañoTrinquete = dañoAplicadoAparejo * 0.3;
+                        if (!this.mastilMesanaCaido) dañoMesana = dañoAplicadoAparejo * 0.3;
+                    }
+
+                    dañoTrinquete = Math.round(dañoTrinquete);
+                    dañoMayor = Math.round(dañoMayor);
+                    dañoMesana = Math.round(dañoMesana);
+
+                    if (dañoTrinquete > 0 && !this.mastilTrinqueteCaido) {
+                        this.saludMastilTrinquete -= dañoTrinquete;
+                        if (this.saludMastilTrinquete <= 0) {
+                            this.saludMastilTrinquete = 0; 
+                            if(!this.mastilTrinqueteCaido) mensajesPrioritariosTurno.push(`¡Trinquete del ${this.nombre} DERRIBADO!`);
+                            this.mastilTrinqueteCaido = true; mastilCaidoEsteImpacto = true;
+                            reporteMástiles += ` ¡Trinquete del ${this.nombre} derribado!`;
+                        } else { reporteMástiles += ` Trinquete dañado (${dañoTrinquete}).`; }
+                    }
+                    if (dañoMayor > 0 && !this.mastilMayorCaido) {
+                        this.saludMastilMayor -= dañoMayor;
+                        if (this.saludMastilMayor <= 0) {
+                            this.saludMastilMayor = 0; 
+                            if(!this.mastilMayorCaido) mensajesPrioritariosTurno.push(`¡Palo Mayor del ${this.nombre} DERRIBADO!`);
+                            this.mastilMayorCaido = true; mastilCaidoEsteImpacto = true;
+                            reporteMástiles += ` ¡Palo Mayor del ${this.nombre} derribado!`;
+                        } else { reporteMástiles += ` Palo Mayor dañado (${dañoMayor}).`; }
+                    }
+                    if (dañoMesana > 0 && !this.mastilMesanaCaido) {
+                        this.saludMastilMesana -= dañoMesana;
+                        if (this.saludMastilMesana <= 0) {
+                            this.saludMastilMesana = 0; 
+                            if(!this.mastilMesanaCaido) mensajesPrioritariosTurno.push(`¡Mesana del ${this.nombre} DERRIBADO!`);
+                            this.mastilMesanaCaido = true; mastilCaidoEsteImpacto = true;
+                            reporteMástiles += ` ¡Mesana del ${this.nombre} derribado!`;
+                        } else { reporteMástiles += ` Mesana dañado (${dañoMesana}).`; }
+                    }
+
+                    if (mastilCaidoEsteImpacto) {
+                        bajasEsteImpacto += this.tripulacionOperativa * BAJAS_CAIDA_MASTIL_PORCENTAJE;
+                    }
+                    if (reporteMástiles) logMsg = `Daño al aparejo por ${atacanteNombre}:${reporteMástiles}`;
+                }
+
+                if (typeof municionUsadaRealmente === 'string' && tipoObjetivo === 'CASCO') {
+                    if (esBarridoProa) {
+                        bajasEsteImpacto *= BAJAS_BARRIDO_PROA_MULTIPLICADOR;
+                    } else if (esBarridoPopa) {
+                        bajasEsteImpacto *= BAJAS_BARRIDO_POPA_MULTIPLICADOR;
+                    }
+                }
+                
+                if (cantidadDañoFlotante > 0 && typeof municionUsadaRealmente === 'string' && tipoObjetivo === 'CASCO') {
+                    if (bajasEsteImpacto > 0 && bajasEsteImpacto < 1) {
+                        bajasEsteImpacto = 1;
+                    }
+                }
+
+                if (bajasEsteImpacto > 0) {
+                    let motivoBajas = `por impacto de ${atacanteNombre}`;
+                    if (infoColision && infoColision.tipo === 'COLISION') {
+                        // Las bajas por colisión se manejan en resolverColisiones
+                    } else {
+                         this.aplicarBajas(bajasEsteImpacto, motivoBajas);
+                    }
+                }
+
+                const prevEficienciaVelocidad = this.eficienciaVelocidadActual;
+                this.actualizarEficienciaVelocidad(); 
+                if (this.eficienciaVelocidadActual < prevEficienciaVelocidad && logMsg) { 
+                    logMsg += ` ¡Eficiencia de velocidad reducida a ${(this.eficienciaVelocidadActual * 100).toFixed(0)}%!`;
+                }
+
+                if (logMsg.trim() !== "" && (Math.round(cantidadDañoFlotante) > 0 || logMsg.includes("destruidos!") || logMsg.includes("comprometido!") || logMsg.includes("derribado!"))) {
+                     agregarAlReporte(logMsg.trim());
+                }
+
+                if (this.esObjetivo) { 
+                    actualizarInfoObjetivo();
+                } else { 
+                    actualizarInfoNavio();
+                }
+            }
+
+            actualizarEficienciaVelocidad() { 
+                let penalizacionCasco = 0;
+                if (this.maxSaludCasco > 0) {
+                    const porcentajeCascoPerdido = (1 - (this.saludCasco / this.maxSaludCasco)) * 100;
+                    penalizacionCasco = Math.floor(porcentajeCascoPerdido / 10) * 0.01; 
+                }
+
+                let penalizacionAparejoTotal = 0;
+                const factorPenalizacionTrinquete = 0.30; 
+                const factorPenalizacionMayor = 0.50;
+                const factorPenalizacionMesana = 0.20;
+
+                if (this.mastilTrinqueteCaido) {
+                    penalizacionAparejoTotal += factorPenalizacionTrinquete;
+                } else if (this.maxSaludMastilTrinquete > 0) { 
+                    penalizacionAparejoTotal += (1 - (this.saludMastilTrinquete / this.maxSaludMastilTrinquete)) * factorPenalizacionTrinquete * 0.5; 
+                }
+
+                if (this.mastilMayorCaido) {
+                    penalizacionAparejoTotal += factorPenalizacionMayor;
+                } else if (this.maxSaludMastilMayor > 0) {
+                    penalizacionAparejoTotal += (1 - (this.saludMastilMayor / this.maxSaludMastilMayor)) * factorPenalizacionMayor * 0.5;
+                }
+
+                if (this.mastilMesanaCaido) {
+                    penalizacionAparejoTotal += factorPenalizacionMesana;
+                } else if (this.maxSaludMastilMesana > 0) {
+                    penalizacionAparejoTotal += (1 - (this.saludMastilMesana / this.maxSaludMastilMesana)) * factorPenalizacionMesana * 0.5;
+                }
+
+                this.eficienciaVelocidadActual = 1.0 - penalizacionCasco - penalizacionAparejoTotal;
+                this.eficienciaVelocidadActual = Math.max(0.05, this.eficienciaVelocidadActual); 
+            }
+        }
+
+
+        // --- Global Game Variables ---
+        let canvas, ctx;
+        let miNavio; 
+        let navioSombra; 
+        let navioObjetivo; 
+        let elementoMensajePrincipal; 
+        let camaraX, camaraY; 
+        let isPanning = false; 
+        let lastPanX, lastPanY; 
+        let cameraManuallyMoved = false; 
+        let fatigaGeneradaEsteTurno = 0; 
+        let fatigaGeneradaEsteTurnoAI = 0; 
+        let tiempoTotalTurnoSegundos = 60; 
+        let tiempoRestanteTurnoSegundos = 60; 
+        let intervaloCronometro = null; 
+        let turnReportLog = []; 
+        const MAX_REPORT_ENTRIES = 100; 
+        let isAnimatingMovement = false; 
+        let animationFrameId = null;    
+        let movementAnimationStartTime = 0; 
+        let isPaused = false; 
+        let gameInitialized = false; 
+
+        let mensajesPrioritariosTurno = [];
+        const consejosMecanicas = [
+            "Consejo: ¡Los barridos de popa y proa causan daño masivo!",
+            "Consejo: Usa Doble Bala contra el aparejo para un 50% más de daño a los mástiles.",
+            "Consejo: La fatiga alta (roja) reduce la efectividad de tu tripulación.",
+            "Consejo: Las colisiones pueden dañar casco, aparejo y timón. ¡Maniobra con cuidado!",
+            "Consejo: Viento Fuerte: Gran velocidad a favor, pero difícil navegar en contra.",
+            "Consejo: Viento Calma: Movimiento lento, pero virajes más precisos.",
+            "Consejo: Tripulación Veterana: Más resistente a la fatiga y más eficiente.",
+            "Consejo: Tripulación Novata: Se fatiga más rápido y es menos eficiente.",
+            "Consejo: Apuntar al Casco destruye flotabilidad y cañones enemigos.",
+            "Consejo: Apuntar al Aparejo reduce la velocidad y maniobrabilidad del enemigo.",
+            "Consejo: La Metralla es ideal para reducir la tripulación enemiga.",
+            "Consejo: Un Timón Dañado limita tus opciones de viraje a +/- 1 punto.",
+            "Consejo: Velamen TV (Toda Vela): Máxima velocidad, pero virajes muy amplios y limitados.",
+            "Consejo: Velamen NV (Nada de Vela): Sin movimiento, pero permite virajes cerrados."
+        ];
+        let indiceConsejoActual = 0;
+
+
+        // --- Utility Functions ---
+        function gradosARadianes(grados) { return grados * (Math.PI / 180); }
+
+        function interpolarAngulo(startAngle, endAngle, progress) { 
+            let difference = endAngle - startAngle;
+            while (difference < -180) difference += 360; 
+            while (difference > 180) difference -= 360;
+            return (startAngle + difference * progress + 360) % 360; 
+        }
+
+        function actualizarMensajePrincipal() {
+            if (!elementoMensajePrincipal) return;
+
+            elementoMensajePrincipal.classList.remove('text-red-400', 'text-yellow-400', 'text-blue-300', 'text-gray-400'); 
+
+            if (mensajesPrioritariosTurno.length > 0) {
+                elementoMensajePrincipal.textContent = mensajesPrioritariosTurno.join(' | ');
+                const primerMensaje = mensajesPrioritariosTurno[0].toUpperCase();
+                if (primerMensaje.includes("HUNDIDO") || primerMensaje.includes("VICTORIA") || primerMensaje.includes("DESTRUIDO")) {
+                    elementoMensajePrincipal.classList.add('text-red-400'); 
+                } else if (primerMensaje.includes("COLISIÓN") || primerMensaje.includes("BARRIDO") || primerMensaje.includes("CAÍDO") || primerMensaje.includes("DAÑADO")) {
+                    elementoMensajePrincipal.classList.add('text-yellow-400'); 
+                } else {
+                    elementoMensajePrincipal.classList.add('text-blue-300'); 
+                }
+            } else {
+                elementoMensajePrincipal.textContent = consejosMecanicas[indiceConsejoActual];
+                elementoMensajePrincipal.classList.add('text-gray-400'); 
+                indiceConsejoActual = (indiceConsejoActual + 1) % consejosMecanicas.length;
+            }
+        }
+
+
+        // --- Main Simulation Logic ---
+        function validarOrdenTimon(navio, nuevoTimonPuntos) { 
+            if (navio.rudderDamaged) { 
+                if (Math.abs(nuevoTimonPuntos) > 1) {
+                    if (navio === miNavio && elementoMensajePrincipal) elementoMensajePrincipal.textContent = `¡Timón dañado! Solo se puede usar +/- 1 punto de timón.`;
+                    return false;
+                }
+            }
+            const cambioAbsolutoTimon = Math.abs(nuevoTimonPuntos - navio.posicionTimonActualPuntos); 
+            const amplitudAbsolutaTimon = Math.abs(nuevoTimonPuntos); 
+            const velamenParaCalculo = navio.ordenVelamen; 
+
+            let limiteCambioPermitido, limiteAmplitudPermitida;
+            switch (velamenParaCalculo) {
+                case 'PV': 
+                case 'NV': 
+                    limiteCambioPermitido = LIMITE_CAMBIO_TIMON_PV;
+                    limiteAmplitudPermitida = LIMITE_AMPLITUD_TIMON_GRANDE_PV;
+                    break;
+                case 'MV': 
+                    limiteCambioPermitido = LIMITE_CAMBIO_TIMON_MV;
+                    limiteAmplitudPermitida = LIMITE_AMPLITUD_TIMON_GRANDE_MV;
+                    break;
+                case 'TV': 
+                    limiteCambioPermitido = LIMITE_CAMBIO_TIMON_TV;
+                    limiteAmplitudPermitida = LIMITE_AMPLITUD_TIMON_GRANDE_TV;
+                    if (amplitudAbsolutaTimon === 4) { 
+                        if (navio === miNavio && elementoMensajePrincipal) elementoMensajePrincipal.textContent = `A Toda Vela (TV) no se puede usar el timón en los extremos (-4/+4).`;
+                        return false;
+                    }
+                    break;
+                default: 
+                    limiteCambioPermitido = LIMITE_CAMBIO_TIMON_PV;
+                    limiteAmplitudPermitida = LIMITE_AMPLITUD_TIMON_GRANDE_PV;
+            }
+
+            if (amplitudAbsolutaTimon > limiteAmplitudPermitida) {
+                 if (navio === miNavio && elementoMensajePrincipal) elementoMensajePrincipal.textContent = `Amplitud de timón (${nuevoTimonPuntos}) excede ${limiteAmplitudPermitida} pts para ${velamenParaCalculo}.`;
+                 return false;
+            }
+            if (cambioAbsolutoTimon > limiteCambioPermitido) {
+                if (navio === miNavio && elementoMensajePrincipal) elementoMensajePrincipal.textContent = `Cambio de timón (${cambioAbsolutoTimon} pts) excede ${limiteCambioPermitido} pts para ${velamenParaCalculo} (desde ${navio.posicionTimonActualPuntos}).`;
+                return false;
+            }
+            return true;
+        }
+
+        function calcularResultadoMovimiento(navioBase, velamenEfectivo, timonOrden, soloVirar = false) { 
+            let tempNavio = { 
+                globalX: navioBase.globalX,
+                globalY: navioBase.globalY,
+                orientacionActualGrados: navioBase.orientacionActualGrados,
+                posicionTimonActualPuntos: navioBase.posicionTimonActualPuntos,
+                rudderDamaged: navioBase.rudderDamaged,
+                eficienciaVelocidadActual: navioBase.eficienciaVelocidadActual
+            };
+
+            if (!validarOrdenTimon(navioBase, timonOrden)) {
+                return {
+                    globalX: navioBase.globalX,
+                    globalY: navioBase.globalY,
+                    orientacionActualGrados: navioBase.orientacionActualGrados,
+                    ordenValida: false
+                };
+            }
+
+            let distanciaDeMovimiento = 0;
+            if (!soloVirar) { 
+                switch (velamenEfectivo) {
+                    case 'PV': distanciaDeMovimiento = DISTANCIA_MOVIMIENTO_PV; break;
+                    case 'MV': distanciaDeMovimiento = DISTANCIA_MOVIMIENTO_MV; break;
+                    case 'TV': distanciaDeMovimiento = DISTANCIA_MOVIMIENTO_TV; break;
+                }
+
+                let direccionHaciaDondeSoplaElViento = (direccionVientoGrados + 180) % 360;
+                let anguloVientoRelativoProa = Math.abs(navioBase.orientacionActualGrados - direccionHaciaDondeSoplaElViento);
+                if (anguloVientoRelativoProa > 180) anguloVientoRelativoProa = 360 - anguloVientoRelativoProa;
+
+                let modificadorViento = 1.0;
+                switch(intensidadViento) {
+                    case "CALMA":
+                        if (anguloVientoRelativoProa <= 45) modificadorViento = 1.05;
+                        else if (anguloVientoRelativoProa >= 135) modificadorViento = 0.8;
+                        break;
+                    case "MEDIA":
+                        if (anguloVientoRelativoProa <= 45) modificadorViento = 1.2;
+                        else if (anguloVientoRelativoProa >= 135) modificadorViento = 0.5;
+                        break;
+                    case "FUERTE":
+                        if (anguloVientoRelativoProa <= 45) modificadorViento = 1.4;
+                        else if (anguloVientoRelativoProa <= 70) modificadorViento = 1.2;
+                        else if (anguloVientoRelativoProa <= 110) modificadorViento = 1.15;
+                        else if (anguloVientoRelativoProa <= 135) modificadorViento = 0.8;
+                        else modificadorViento = 0.3;
+                        break;
+                }
+                distanciaDeMovimiento *= modificadorViento;
+                distanciaDeMovimiento *= tempNavio.eficienciaVelocidadActual;
+            } 
+
+            let anguloDeVirajeTurno = 0;
+            const puntosDeTimonAbsolutos = Math.abs(timonOrden);
+            const direccionDeViraje = Math.sign(timonOrden);
+
+            if (puntosDeTimonAbsolutos > 0) {
+                const gradosVirajeBaseSinModificar = GRADOS_BASE_POR_PUNTO_TIMON_A_PV[puntosDeTimonAbsolutos.toString()] || 0;
+                switch (velamenEfectivo) {
+                    case 'PV': case 'NV': anguloDeVirajeTurno = gradosVirajeBaseSinModificar; break;
+                    case 'MV': anguloDeVirajeTurno = gradosVirajeBaseSinModificar * FACTOR_EFECTIVIDAD_TIMON_MV; break;
+                    case 'TV': anguloDeVirajeTurno = gradosVirajeBaseSinModificar * FACTOR_EFECTIVIDAD_TIMON_TV; break;
+                }
+                anguloDeVirajeTurno = anguloDeVirajeTurno * direccionDeViraje;
+            }
+
+            const orientacionPromedioGrados = tempNavio.orientacionActualGrados + anguloDeVirajeTurno / 2;
+            const orientacionPromedioRadianes = gradosARadianes(orientacionPromedioGrados);
+
+            tempNavio.globalX += distanciaDeMovimiento * Math.sin(orientacionPromedioRadianes);
+            tempNavio.globalY += distanciaDeMovimiento * -Math.cos(orientacionPromedioRadianes);
+            tempNavio.orientacionActualGrados = (tempNavio.orientacionActualGrados + anguloDeVirajeTurno + 360) % 360;
+
+            return {
+                globalX: tempNavio.globalX,
+                globalY: tempNavio.globalY,
+                orientacionActualGrados: tempNavio.orientacionActualGrados,
+                ordenValida: true
+            };
+        }
+        
+        function detectarColisionConTipos(navioA, navioB) { 
+            if (!navioA || !navioB || navioA.isSunk || navioB.isSunk) { 
+                 return { chocan: false, tipoNavioA: null, tipoNavioB: null };
+            }
+            const puntosNavioA = navioA.getCollisionPoints();
+            const puntosNavioB = navioB.getCollisionPoints();
+
+            for (const pA of puntosNavioA) {
+                for (const pB of puntosNavioB) {
+                    const dx = pA.x - pB.x;
+                    const dy = pA.y - pB.y;
+                    const distancia = Math.sqrt(dx * dx + dy * dy);
+                    const umbralColisionPuntos = pA.radius + pB.radius;
+
+                    if (distancia < umbralColisionPuntos) {
+                        return { chocan: true, tipoNavioA: pA.type, tipoNavioB: pB.type };
+                    }
+                }
+            }
+            return { chocan: false, tipoNavioA: null, tipoNavioB: null };
+        }
+
+
+        function prepararMovimientoNavio(navio) {
+            if (navio.isSunk) {
+                navio.startX = navio.globalX; navio.startY = navio.globalY; navio.startOrientacion = navio.orientacionActualGrados;
+                navio.targetX = navio.globalX; navio.targetY = navio.globalY; navio.targetOrientacion = navio.orientacionActualGrados;
+                return false;
+            }
+
+            let fatigaEsteTurnoParaEsteNavio = 0;
+            const valorVelamenActualOriginal = VELAMEN_MAP[navio.velamenActual];
+            const valorOrdenVelamen = VELAMEN_MAP[navio.ordenVelamen];
+            let valorVelamenEfectivoEsteTurno = valorVelamenActualOriginal;
+            
+            let soloVirarEsteTurno = navio.forzarSoloViraje || navio.haColisionadoEsteTurno;
+
+
+            navio.velamenAnteriorTurno = navio.velamenActual; 
+
+            if (soloVirarEsteTurno) {
+                fatigaEsteTurnoParaEsteNavio = 0; 
+                navio.velamenEfectivoEnTurno = navio.velamenActual; 
+            } else {
+                if (valorOrdenVelamen !== valorVelamenActualOriginal) {
+                    if ((navio.velamenActual === 'NV' && navio.ordenVelamen === 'PV') ||
+                        (navio.velamenActual === 'PV' && navio.ordenVelamen === 'NV')) {
+                        fatigaEsteTurnoParaEsteNavio += FATIGA_ACCION_ESPECIAL_VELA_NV_PV;
+                    } else if (!((navio.velamenActual === 'NV' && navio.ordenVelamen === 'TV') ||
+                                 (navio.velamenActual === 'TV' && navio.ordenVelamen === 'NV'))) {
+                        fatigaEsteTurnoParaEsteNavio += FATIGA_ACCION_NORMAL;
+                    }
+
+                    if (valorOrdenVelamen > valorVelamenActualOriginal) {
+                        valorVelamenEfectivoEsteTurno = Math.min(valorVelamenActualOriginal + 1, valorOrdenVelamen);
+                    } else {
+                        valorVelamenEfectivoEsteTurno = Math.max(valorVelamenActualOriginal - 1, valorOrdenVelamen);
+                    }
+                }
+                navio.velamenEfectivoEnTurno = VELAMEN_MAP_REVERSE[valorVelamenEfectivoEsteTurno];
+                navio.velamenActual = navio.velamenEfectivoEnTurno; 
+            }
+
+            if (navio.velamenEfectivoEnTurno === 'TV' && Math.abs(navio.ordenTimon) > LIMITE_AMPLITUD_TIMON_GRANDE_TV) {
+                const timonOriginal = navio.ordenTimon;
+                navio.ordenTimon = Math.sign(navio.ordenTimon) * LIMITE_AMPLITUD_TIMON_GRANDE_TV; 
+                 if (navio === miNavio || (navio === navioObjetivo && timonOriginal !== navio.ordenTimon) ) { 
+                    agregarAlReporte(`Timón del ${navio.nombre} ajustado de ${timonOriginal} a ${navio.ordenTimon} pts debido a velamen TV.`);
+                }
+            }
+
+            if (navio === miNavio) {
+                fatigaGeneradaEsteTurno = fatigaEsteTurnoParaEsteNavio;
+            } else if (navio === navioObjetivo) {
+                fatigaGeneradaEsteTurnoAI = fatigaEsteTurnoParaEsteNavio;
+            }
+
+            navio.startX = navio.globalX;
+            navio.startY = navio.globalY;
+            navio.startOrientacion = navio.orientacionActualGrados;
+
+            const resultado = calcularResultadoMovimiento(navio, navio.velamenEfectivoEnTurno, navio.ordenTimon, soloVirarEsteTurno);
+
+
+            if (!resultado.ordenValida) { 
+                console.warn(`Orden de timón inválida para ${navio.nombre} (${navio.ordenTimon}pts con ${navio.velamenEfectivoEnTurno}). Movimiento no ejecutado según orden de timón.`);
+                navio.ordenTimon = navio.posicionTimonActualPuntos; 
+                const resultadoCorregido = calcularResultadoMovimiento(navio, navio.velamenEfectivoEnTurno, navio.posicionTimonActualPuntos, soloVirarEsteTurno);
+                navio.targetX = resultadoCorregido.globalX;
+                navio.targetY = resultadoCorregido.globalY;
+                navio.targetOrientacion = resultadoCorregido.orientacionActualGrados;
+                navio.posicionTimonAnteriorPuntos = navio.posicionTimonActualPuntos;
+                return false;
+            }
+
+            navio.posicionTimonAnteriorPuntos = navio.posicionTimonActualPuntos;
+            navio.posicionTimonActualPuntos = navio.ordenTimon; 
+
+            navio.targetX = resultado.globalX;
+            navio.targetY = resultado.globalY;
+            navio.targetOrientacion = resultado.orientacionActualGrados;
+
+            return true;
+        }
+
+
+        function actualizarSombra() { 
+            if (!miNavio || !navioSombra) return;
+            if (miNavio.isSunk) { 
+                navioSombra.visible = false;
+                if (!isAnimatingMovement) dibujarTodo(); 
+                return;
+            }
+            let valorVelamenActualSombra = VELAMEN_MAP[miNavio.velamenActual];
+            let valorOrdenVelamenSombra = VELAMEN_MAP[miNavio.ordenVelamen];
+            let velamenEfectivoParaSombra;
+
+            if (valorOrdenVelamenSombra !== valorVelamenActualSombra) {
+                if (valorOrdenVelamenSombra > valorVelamenActualSombra) {
+                    velamenEfectivoParaSombra = VELAMEN_MAP_REVERSE[Math.min(valorVelamenActualSombra + 1, valorOrdenVelamenSombra)];
+                } else {
+                    velamenEfectivoParaSombra = VELAMEN_MAP_REVERSE[Math.max(valorVelamenActualSombra - 1, valorOrdenVelamenSombra)];
+                }
+            } else {
+                velamenEfectivoParaSombra = miNavio.ordenVelamen; 
+            }
+            
+            let timonParaSombra = miNavio.ordenTimon;
+            if (velamenEfectivoParaSombra === 'TV' && Math.abs(timonParaSombra) > LIMITE_AMPLITUD_TIMON_GRANDE_TV) {
+                timonParaSombra = Math.sign(timonParaSombra) * LIMITE_AMPLITUD_TIMON_GRANDE_TV;
+            }
+
+            const resultadoSombra = calcularResultadoMovimiento(miNavio, velamenEfectivoParaSombra, timonParaSombra, miNavio.forzarSoloViraje); 
+            if (resultadoSombra.ordenValida) {
+                navioSombra.globalX = resultadoSombra.globalX; 
+                navioSombra.globalY = resultadoSombra.globalY;
+                navioSombra.orientacionActualGrados = resultadoSombra.orientacionActualGrados;
+                navioSombra.actualizarPuntosDeColision();
+                navioSombra.visible = true;
+            } else {
+                navioSombra.visible = false; 
+            }
+            if (!isAnimatingMovement) dibujarTodo(); 
+        }
+
+        function generarMensajeDisparo(atacante, objetivo, banda, seccion, apuntarA, municionDisparada, distancia, daño, anguloRelativo) {
+            let msg = `El ${atacante.nombre} dispara su batería de ${banda} (${seccion || 'banda'}) contra el ${apuntarA.toLowerCase()} del ${objetivo.nombre} `;
+            msg += `con munición de ${municionDisparada.replace('_', ' ').toLowerCase()} a ${distancia.toFixed(0)}m (ángulo rel: ${anguloRelativo.toFixed(0)}°). `;
+            if (daño <= 0 && apuntarA === 'CASCO') { 
+                msg += `El disparo no causa daños efectivos al casco.`;
+            }
+            return msg;
+        }
+
+        function executeFireOrder(atacante, defensor) { 
+            if (!atacante.ordenDisparo || atacante.isSunk || defensor.isSunk) return; 
+
+            const municionDisparada = atacante.municionCargada; 
+            const { banda, apuntarA, seccion: seccionOrdenada } = atacante.ordenDisparo;
+
+            const dx_atk_to_def = defensor.globalX - atacante.globalX;
+            const dy_atk_to_def = defensor.globalY - atacante.globalY; 
+            const distancia = Math.sqrt(dx_atk_to_def * dx_atk_to_def + dy_atk_to_def * dy_atk_to_def);
+
+            let angle_rad_atk_to_def = Math.atan2(dx_atk_to_def, -dy_atk_to_def); 
+            let anguloAlObjetivo_world = (angle_rad_atk_to_def * 180 / Math.PI + 360) % 360;
+
+            const anguloRelativoAtacante = (anguloAlObjetivo_world - atacante.orientacionActualGrados + 360) % 360; 
+
+            let dañoBase = 10; 
+            if (atacante.maxSaludCasco === MAX_HULL_PLAYER) { 
+                dañoBase *= CAPITAL_SHIP_DAMAGE_MULTIPLIER;
+            }
+             if (apuntarA === 'APAREJO') { 
+                dañoBase /= 2;
+            }
+
+            let factorCañones = 1.0;
+            if (banda === 'BABOR') {
+                if (atacante.maxCanonesPorBanda > 0) {
+                    factorCañones = atacante.canonesBaborOperativos / atacante.maxCanonesPorBanda;
+                } else { factorCañones = 0; }
+            } else if (banda === 'ESTRIBOR') {
+                if (atacante.maxCanonesPorBanda > 0) {
+                    factorCañones = atacante.canonesEstriborOperativos / atacante.maxCanonesPorBanda;
+                } else { factorCañones = 0; }
+            }
+            dañoBase *= factorCañones;
+
+            if (factorCañones < 1 && atacante.maxCanonesPorBanda > 0 && factorCañones > 0) {
+                agregarAlReporte(`La banda de ${banda.toLowerCase()} del ${atacante.nombre} opera al ${(factorCañones * 100).toFixed(0)}% de efectividad por cañones dañados.`);
+            } else if (factorCañones <= 0 && atacante.maxCanonesPorBanda > 0) {
+                 agregarAlReporte(`¡La banda de ${banda.toLowerCase()} del ${atacante.nombre} no tiene cañones operativos!`);
+                 dañoBase = 0; 
+            }
+
+            let seccionEfectivaDisparo = null;
+            let enAnguloDeTiro = false;
+
+            if (banda === 'ESTRIBOR') {
+                if (anguloRelativoAtacante >= ARC_E_COMPLETA_INICIO && anguloRelativoAtacante <= ARC_E_COMPLETA_FIN) {
+                    seccionEfectivaDisparo = 'COMPLETA'; enAnguloDeTiro = true;
+                } else if (anguloRelativoAtacante >= ARC_E_MEDIA_PROA_INICIO && anguloRelativoAtacante < ARC_E_MEDIA_PROA_FIN) {
+                    seccionEfectivaDisparo = 'PROA'; enAnguloDeTiro = true;
+                } else if (anguloRelativoAtacante > ARC_E_MEDIA_POPA_INICIO && anguloRelativoAtacante <= ARC_E_MEDIA_POPA_FIN) {
+                    seccionEfectivaDisparo = 'POPA'; enAnguloDeTiro = true;
+                }
+            } else { // BABOR
+                if (anguloRelativoAtacante >= ARC_B_COMPLETA_INICIO && anguloRelativoAtacante <= ARC_B_COMPLETA_FIN) {
+                    seccionEfectivaDisparo = 'COMPLETA'; enAnguloDeTiro = true;
+                } else if (anguloRelativoAtacante > ARC_B_MEDIA_PROA_INICIO && anguloRelativoAtacante <= ARC_B_MEDIA_PROA_FIN) {
+                    seccionEfectivaDisparo = 'PROA'; enAnguloDeTiro = true;
+                } else if (anguloRelativoAtacante >= ARC_B_MEDIA_POPA_INICIO && anguloRelativoAtacante < ARC_B_MEDIA_POPA_FIN) {
+                    seccionEfectivaDisparo = 'POPA'; enAnguloDeTiro = true;
+                }
+            }
+
+            let seccionDisparoFinal = atacante === miNavio ? seccionOrdenada : seccionEfectivaDisparo;
+
+            if (enAnguloDeTiro) {
+                if (atacante === miNavio) { 
+                    if (seccionOrdenada === "COMPLETA" && seccionEfectivaDisparo !== "COMPLETA") { 
+                        seccionDisparoFinal = seccionEfectivaDisparo; 
+                    } else if (seccionOrdenada !== "COMPLETA" && seccionOrdenada !== seccionEfectivaDisparo && seccionEfectivaDisparo === "COMPLETA") { 
+                        seccionDisparoFinal = seccionOrdenada; 
+                    } else if (seccionOrdenada !== "COMPLETA" && seccionOrdenada !== seccionEfectivaDisparo && seccionEfectivaDisparo !== "COMPLETA" && seccionEfectivaDisparo !== null){ 
+                        enAnguloDeTiro = false; 
+                         const mensajeLog = `El ${atacante.nombre} intenta disparar por ${banda} (${seccionOrdenada}) al ${defensor.nombre}, pero el objetivo está en la sección ${seccionEfectivaDisparo || 'ninguna'} (ángulo rel: ${anguloRelativoAtacante.toFixed(0)}°). Disparo fallido.`;
+                        agregarAlReporte(mensajeLog);
+                    }
+                }
+
+                if (enAnguloDeTiro && seccionDisparoFinal === "COMPLETA") {
+                    if (atacante === miNavio) fatigaGeneradaEsteTurno += FATIGA_ACCION_NORMAL;
+                    else if (atacante === navioObjetivo) fatigaGeneradaEsteTurnoAI += FATIGA_ACCION_NORMAL;
+                }
+
+                if (enAnguloDeTiro && (seccionDisparoFinal === 'PROA' || seccionDisparoFinal === 'POPA')) {
+                    dañoBase /= 2;
+                }
+            } else { 
+                const mensajeLog = `El ${atacante.nombre} intenta disparar por ${banda} al ${defensor.nombre}, pero el objetivo está fuera del arco de tiro (ángulo rel: ${anguloRelativoAtacante.toFixed(0)}°).`;
+                agregarAlReporte(mensajeLog);
+                if (atacante === miNavio && elementoMensajePrincipal) elementoMensajePrincipal.textContent = `Objetivo fuera del arco de ${banda} para disparo.`;
+                atacante.ordenDisparo = null;
+                atacante.ordenDisparoLista = false;
+                if (atacante === miNavio) actualizarEstadoBotonesDisparo(); else if(!isAnimatingMovement) dibujarTodo(); 
+                return;
+            }
+
+            if (!enAnguloDeTiro) { 
+                 atacante.ordenDisparo = null;
+                 atacante.ordenDisparoLista = false;
+                if (atacante === miNavio) actualizarEstadoBotonesDisparo(); else if(!isAnimatingMovement) dibujarTodo();
+                return;
+            }
+
+            const dx_def_to_atk = atacante.globalX - defensor.globalX;
+            const dy_def_to_atk = atacante.globalY - defensor.globalY; 
+            let angle_rad_from_def_to_atk = Math.atan2(dx_def_to_atk, -dy_def_to_atk); 
+            let angle_from_def_to_atk_world = (angle_rad_from_def_to_atk * 180 / Math.PI + 360) % 360;
+
+            let relative_angle_of_attacker_to_defender_bow = (angle_from_def_to_atk_world - defensor.orientacionActualGrados + 360) % 360;
+
+            let isBowRake = (relative_angle_of_attacker_to_defender_bow <= BOW_RAKE_MAX_ANGLE || relative_angle_of_attacker_to_defender_bow >= BOW_RAKE_MIN_ANGLE);
+            let isSternRake = (relative_angle_of_attacker_to_defender_bow >= STERN_RAKE_MIN_ANGLE && relative_angle_of_attacker_to_defender_bow <= STERN_RAKE_MAX_ANGLE);
+            let rakeMessage = "";
+            let nombreAtacanteModificado = atacante.nombre; 
+
+            if (isSternRake) {
+                dañoBase *= STERN_RAKE_MULTIPLIER;
+                rakeMessage = "¡Barrido de Popa devastador!";
+                nombreAtacanteModificado = `${atacante.nombre} (barrido de popa)`;
+                agregarAlReporte(rakeMessage + ` (Ángulo Def: ${relative_angle_of_attacker_to_defender_bow.toFixed(1)}°)`);
+                mensajesPrioritariosTurno.push("¡BARRIDO DE POPA!");
+                if (apuntarA === 'CASCO' && Math.random() < RUDDER_DAMAGE_CHANCE_RAKE) { 
+                    if (!defensor.rudderDamaged) {
+                        defensor.rudderDamaged = true;
+                        agregarAlReporte(`¡El timón del ${defensor.nombre} ha sido dañado por el barrido de popa!`);
+                        mensajesPrioritariosTurno.push(`¡Timón del ${defensor.nombre} DAÑADO por Barrido!`);
+                    }
+                }
+            } else if (isBowRake) {
+                dañoBase *= BOW_RAKE_MULTIPLIER;
+                rakeMessage = "¡Barrido de Proa efectivo!";
+                nombreAtacanteModificado = `${atacante.nombre} (barrido de proa)`;
+                agregarAlReporte(rakeMessage + ` (Ángulo Def: ${relative_angle_of_attacker_to_defender_bow.toFixed(1)}°)`);
+                 mensajesPrioritariosTurno.push("¡BARRIDO DE PROA!");
+            }
+
+            if (municionDisparada === "DOBLE_BALA" && apuntarA === "APAREJO") dañoBase *= 1.5; 
+            if (municionDisparada === "METRALLA" && apuntarA === "CASCO") dañoBase *= 0.5; 
+            if (municionDisparada === "METRALLA" && apuntarA === "APAREJO") dañoBase *= 0.75; 
+
+            let umbralFatigaAtacante;
+            switch(atacante.crewExperience) {
+                case 'NOVATA': umbralFatigaAtacante = UMBRAL_PENALIZACION_FATIGA_NOVATA; break;
+                case 'VETERANA': umbralFatigaAtacante = UMBRAL_PENALIZACION_FATIGA_VETERANA; break;
+                default: umbralFatigaAtacante = UMBRAL_PENALIZACION_FATIGA_NORMAL;
+            }
+
+            let modificadorFatiga = 1.0;
+            if (atacante.fatigaTripulacion > umbralFatigaAtacante) {
+                if (atacante.crewExperience === 'VETERANA' && atacante.fatigaTripulacion < 100) {
+                    // Veteran crews are not penalized by fatigue until 100%
+                } else {
+                    modificadorFatiga = 1 - ((atacante.fatigaTripulacion - umbralFatigaAtacante) / (100 - umbralFatigaAtacante)) * 0.5; 
+                    modificadorFatiga = Math.max(0.1, modificadorFatiga); 
+                }
+            }
+            let dañoFinalFlotante = dañoBase * modificadorFatiga; 
+
+            if (distancia < 100) dañoFinalFlotante *= 1.5; 
+            else if (distancia < 250) dañoFinalFlotante *= 1.0; 
+            else if (distancia < 400) dañoFinalFlotante *= 0.5; 
+            else dañoFinalFlotante = 0; 
+
+            let dañoCausadoParaLog = Math.round(dañoFinalFlotante);
+
+            const logMessage = generarMensajeDisparo(atacante, defensor, banda, seccionDisparoFinal, apuntarA, municionDisparada, distancia, dañoCausadoParaLog, anguloRelativoAtacante);
+            if (!rakeMessage.includes(relative_angle_of_attacker_to_defender_bow.toFixed(1)) && !(apuntarA === 'APAREJO' && dañoFinalFlotante > 0) ) {
+                 agregarAlReporte(logMessage);
+            }
+
+            if (dañoFinalFlotante > 0 || apuntarA === 'APAREJO') { 
+                let bandaImpactadaEnDefensor = null; 
+                 if (relative_angle_of_attacker_to_defender_bow > 0 && relative_angle_of_attacker_to_defender_bow < 180) { 
+                    bandaImpactadaEnDefensor = 'ESTRIBOR';
+                } else if (relative_angle_of_attacker_to_defender_bow > 180 && relative_angle_of_attacker_to_defender_bow < 360) { 
+                    bandaImpactadaEnDefensor = 'BABOR';
+                } else { 
+                     bandaImpactadaEnDefensor = (relative_angle_of_attacker_to_defender_bow === 0 || relative_angle_of_attacker_to_defender_bow === 360) ? 'PROA' : 'POPA';
+                }
+                defensor.recibirDaño(
+                    dañoFinalFlotante,                      
+                    apuntarA,                               
+                    nombreAtacanteModificado,               
+                    bandaImpactadaEnDefensor,               
+                    relative_angle_of_attacker_to_defender_bow, 
+                    null,                                   
+                    municionDisparada,                     
+                    isBowRake,                              
+                    isSternRake                             
+                );
+            }
+            
+            if (atacante === miNavio) {
+                // Munición para la siguiente carga ya se maneja por el select.
+            }
+
+            atacante.ordenDisparo = null;
+            atacante.ordenDisparoLista = false;
+            if (atacante === miNavio) {
+                actualizarEstadoBotonesDisparo(); 
+            }
+        }
+
+        function decidirDisparoAI(aiNavio, jugadorNavio) { 
+            aiNavio.ordenDisparo = null; 
+            aiNavio.ordenDisparoLista = false;
+            const dx = jugadorNavio.globalX - aiNavio.globalX;
+            const dy = jugadorNavio.globalY - aiNavio.globalY;
+            const distancia = Math.sqrt(dx * dx + dy * dy);
+
+            if (distancia > MAX_VISUAL_RANGE_ARC + 50) return; 
+
+            const dx_ai_to_player = jugadorNavio.globalX - aiNavio.globalX;
+            const dy_ai_to_player = jugadorNavio.globalY - aiNavio.globalY;
+            let angle_rad_ai_to_player = Math.atan2(dx_ai_to_player, -dy_ai_to_player);
+            let anguloAlJugador_world = (angle_rad_ai_to_player * 180 / Math.PI + 360) % 360;
+
+            const anguloRelativoAlAI = (anguloAlJugador_world - aiNavio.orientacionActualGrados + 360) % 360;
+
+            let bandaDeTiroAI = null;
+            let seccionEfectivaAI = null;
+
+            if (anguloRelativoAlAI >= ARC_E_COMPLETA_INICIO && anguloRelativoAlAI <= ARC_E_COMPLETA_FIN) {
+                bandaDeTiroAI = 'ESTRIBOR'; seccionEfectivaAI = 'COMPLETA';
+            } else if (anguloRelativoAlAI >= ARC_E_MEDIA_PROA_INICIO && anguloRelativoAlAI < ARC_E_MEDIA_PROA_FIN) {
+                bandaDeTiroAI = 'ESTRIBOR'; seccionEfectivaAI = 'PROA';
+            } else if (anguloRelativoAlAI > ARC_E_MEDIA_POPA_INICIO && anguloRelativoAlAI <= ARC_E_MEDIA_POPA_FIN) {
+                bandaDeTiroAI = 'ESTRIBOR'; seccionEfectivaAI = 'POPA';
+            }
+            if (!bandaDeTiroAI) {
+                if (anguloRelativoAlAI >= ARC_B_COMPLETA_INICIO && anguloRelativoAlAI <= ARC_B_COMPLETA_FIN) {
+                    bandaDeTiroAI = 'BABOR'; seccionEfectivaAI = 'COMPLETA';
+                } else if (anguloRelativoAlAI > ARC_B_MEDIA_PROA_INICIO && anguloRelativoAlAI <= ARC_B_MEDIA_PROA_FIN) {
+                    bandaDeTiroAI = 'BABOR'; seccionEfectivaAI = 'PROA';
+                } else if (anguloRelativoAlAI >= ARC_B_MEDIA_POPA_INICIO && anguloRelativoAlAI < ARC_B_MEDIA_POPA_FIN) {
+                    bandaDeTiroAI = 'BABOR'; seccionEfectivaAI = 'POPA';
+                }
+            }
+
+            if (bandaDeTiroAI) { 
+                let apuntarA_AI = 'CASCO'; 
+                const eficienciaJugador = jugadorNavio.eficienciaVelocidadActual;
+                const eficienciaAI = aiNavio.eficienciaVelocidadActual;
+                const saludAparejoGeneralJugador = (jugadorNavio.saludMastilTrinquete + jugadorNavio.saludMastilMayor + jugadorNavio.saludMastilMesana) /
+                                                 (jugadorNavio.maxSaludMastilTrinquete + jugadorNavio.maxSaludMastilMayor + jugadorNavio.maxSaludMastilMesana);
+
+                if (eficienciaJugador > eficienciaAI * 1.2 && saludAparejoGeneralJugador > 0.5) { 
+                    if (Math.random() < 0.4) apuntarA_AI = 'APAREJO'; 
+                } else if (saludAparejoGeneralJugador < 0.4) { 
+                     if (Math.random() < 0.6) apuntarA_AI = 'APAREJO'; 
+                }
+
+                if (seccionEfectivaAI !== 'COMPLETA' && distancia > 250) {
+                    if (Math.random() > 0.3) { 
+                        bandaDeTiroAI = null;
+                    }
+                }
+                if (bandaDeTiroAI) { 
+                    const municionAI = apuntarA_AI === 'APAREJO' ? 'DOBLE_BALA' : 'BALA_REDONDA';
+                    aiNavio.municionCargada = municionAI; 
+                    aiNavio.municionParaSiguienteCarga = municionAI;
+
+                    aiNavio.ordenDisparo = {
+                        banda: bandaDeTiroAI,
+                        apuntarA: apuntarA_AI,
+                        seccion: seccionEfectivaAI 
+                    };
+                    aiNavio.ordenDisparoLista = true;
+                }
+            }
+        }
+
+        function decidirMovimientoAI(aiNavio, jugadorNavio) { 
+            const distanciaAlJugador = Math.sqrt(Math.pow(jugadorNavio.globalX - aiNavio.globalX, 2) + Math.pow(jugadorNavio.globalY - aiNavio.globalY, 2));
+            let nuevaOrdenVelamen = aiNavio.velamenActual; 
+
+            if (distanciaAlJugador > MAX_VISUAL_RANGE_ARC * 0.7) { 
+                if (aiNavio.velamenActual === 'NV') nuevaOrdenVelamen = 'PV';
+                else if (aiNavio.velamenActual === 'PV') nuevaOrdenVelamen = 'MV';
+                else if (aiNavio.velamenActual === 'MV') nuevaOrdenVelamen = 'TV';
+            } else if (distanciaAlJugador < MAX_VISUAL_RANGE_ARC * 0.2) { 
+                if (aiNavio.velamenActual === 'TV') nuevaOrdenVelamen = 'MV';
+                else if (aiNavio.velamenActual === 'MV') nuevaOrdenVelamen = 'PV';
+            } else { 
+                if (Math.abs(aiNavio.posicionTimonActualPuntos) >=3 && aiNavio.velamenActual === 'TV') { 
+                    nuevaOrdenVelamen = 'MV';
+                } else if (aiNavio.velamenActual === 'NV') { 
+                    nuevaOrdenVelamen = 'PV';
+                } else { 
+                    nuevaOrdenVelamen = 'MV';
+                }
+            }
+            if (aiNavio.velamenActual === 'NV' && nuevaOrdenVelamen === 'TV') nuevaOrdenVelamen = 'PV';
+            if (aiNavio.velamenActual === 'TV' && nuevaOrdenVelamen === 'NV') nuevaOrdenVelamen = 'MV';
+
+            aiNavio.ordenVelamen = nuevaOrdenVelamen;
+
+            let ordenTimonAI = 0;
+            const dx_ai_to_player = jugadorNavio.globalX - aiNavio.globalX;
+            const dy_ai_to_player = jugadorNavio.globalY - aiNavio.globalY;
+            let angle_rad_ai_to_player = Math.atan2(dx_ai_to_player, -dy_ai_to_player);
+            let anguloAlJugadorDesdeAI_world = (angle_rad_ai_to_player * 180 / Math.PI + 360) % 360;
+
+            let anguloRelativoJugador = (anguloAlJugadorDesdeAI_world - aiNavio.orientacionActualGrados + 360) % 360; 
+
+            let diffEstribor = Math.abs(anguloRelativoJugador - 90);
+            let diffBabor = Math.abs(anguloRelativoJugador - 270);
+            if (diffEstribor > 180) diffEstribor = 360 - diffEstribor; 
+            if (diffBabor > 180) diffBabor = 360 - diffBabor;
+
+            if ( (anguloRelativoJugador > 10 && anguloRelativoJugador < 80) || (anguloRelativoJugador > 280 && anguloRelativoJugador < 350) ){ 
+                 ordenTimonAI = (anguloRelativoJugador < 180) ? 3 : -3; 
+            } else if ( (anguloRelativoJugador > 100 && anguloRelativoJugador < 170) || (anguloRelativoJugador > 190 && anguloRelativoJugador < 260) ) { 
+                 ordenTimonAI = (anguloRelativoJugador < 180) ? -3 : 3; 
+            } else if (anguloRelativoJugador <= 10 || anguloRelativoJugador >= 350) { 
+                ordenTimonAI = (Math.random() < 0.5) ? 4 : -4; 
+            } else if (anguloRelativoJugador >= 170 && anguloRelativoJugador <= 190) { 
+                ordenTimonAI = (Math.random() < 0.5) ? 4 : -4; 
+            } else { 
+                 if (diffEstribor < diffBabor && anguloRelativoJugador < 180) { 
+                    if (anguloRelativoJugador < 85) ordenTimonAI = 1; else if (anguloRelativoJugador > 95) ordenTimonAI = -1; 
+                } else if (diffBabor < diffEstribor && anguloRelativoJugador > 180) { 
+                    if (anguloRelativoJugador < 265) ordenTimonAI = 1; else if (anguloRelativoJugador > 275) ordenTimonAI = -1; 
+                }
+            }
+
+            if (validarOrdenTimon(aiNavio, ordenTimonAI)) {
+                aiNavio.ordenTimon = ordenTimonAI;
+            } else { 
+                for (let i = Math.abs(ordenTimonAI) - 1; i >= 0; i--) {
+                    let reducedTurn = Math.sign(ordenTimonAI) * i;
+                     if (validarOrdenTimon(aiNavio, reducedTurn)) {
+                        aiNavio.ordenTimon = reducedTurn;
+                        break;
+                    }
+                }
+            }
+        }
+
+        // --- Collision System ---
+        function obtenerBandaImpactoColision(navioImpactado, puntoImpactoNavioImpactado, navioQueImpacta, puntoImpactoNavioQueImpacta) {
+            const dxImpacto = puntoImpactoNavioImpactado.x - navioImpactado.globalX;
+            const dyImpacto = puntoImpactoNavioImpactado.y - navioImpactado.globalY;
+
+            let angle_rad_impacto = Math.atan2(dxImpacto, -dyImpacto);
+            let anguloAbsolutoDelImpactoEnNavio = (angle_rad_impacto * 180 / Math.PI + 360) % 360;
+
+            let anguloRelativoImpacto = (anguloAbsolutoDelImpactoEnNavio - navioImpactado.orientacionActualGrados + 360) % 360;
+
+            if (anguloRelativoImpacto > 45 && anguloRelativoImpacto < 135) { 
+                return 'ESTRIBOR';
+            } else if (anguloRelativoImpacto > 225 && anguloRelativoImpacto < 315) { 
+                return 'BABOR';
+            } else if (anguloRelativoImpacto <= 45 || anguloRelativoImpacto >= 315) { 
+                return 'PROA';
+            } else { 
+                return 'POPA';
+            }
+        }
+
+
+        function resolverColisiones(navio1, navio2) { 
+            if (navio1.isSunk || navio2.isSunk) return false; 
+
+            const colisionInfo = detectarColisionConTipos(navio1, navio2);
+
+            if (colisionInfo.chocan) {
+                mensajesPrioritariosTurno.push("¡COLISIÓN!");
+                agregarAlReporte(`¡COLISIÓN! El ${navio1.nombre} (${colisionInfo.tipoNavioA}) y el ${navio2.nombre} (${colisionInfo.tipoNavioB}) han chocado.`);
+                navio1.haColisionadoEsteTurno = true; 
+                navio2.haColisionadoEsteTurno = true; 
+
+                if (colisionInfo.tipoNavioA === 'BOW' && colisionInfo.tipoNavioB === 'STERN') {
+                    navio1.forzarSoloViraje = true; 
+                    agregarAlReporte(`El ${navio1.nombre} choca por proa con la popa del ${navio2.nombre}. ${navio1.nombre} detiene su avance.`);
+                } 
+                else if (colisionInfo.tipoNavioB === 'BOW' && colisionInfo.tipoNavioA === 'STERN') {
+                    navio2.forzarSoloViraje = true; 
+                     agregarAlReporte(`El ${navio2.nombre} choca por proa con la popa del ${navio1.nombre}. ${navio2.nombre} detiene su avance.`);
+                }
+                else {
+                    navio1.forzarSoloViraje = true;
+                    navio2.forzarSoloViraje = true;
+                    agregarAlReporte(`Colisión entre ${navio1.nombre} y ${navio2.nombre}. Ambos detienen su avance.`);
+                }
+
+                let baseDamageCollision = BASE_COLLISION_DAMAGE;
+
+                let angle_rad_linea_colision = Math.atan2(navio1.globalX - navio2.globalX, -(navio1.globalY - navio2.globalY));
+                let anguloLineaColision = (angle_rad_linea_colision * 180 / Math.PI + 360) % 360;
+
+                let relOrientNavio1 = Math.abs(navio1.orientacionActualGrados - anguloLineaColision);
+                if (relOrientNavio1 > 180) relOrientNavio1 = 360 - relOrientNavio1;
+
+                let anguloOpuestoLineaColision = (anguloLineaColision + 180) % 360;
+                let relOrientNavio2 = Math.abs(navio2.orientacionActualGrados - anguloOpuestoLineaColision);
+                if (relOrientNavio2 > 180) relOrientNavio2 = 360 - relOrientNavio2;
+
+                let collisionDamage1 = baseDamageCollision;
+                let collisionDamage2 = baseDamageCollision;
+
+                if (relOrientNavio1 < 60) collisionDamage1 *= 1.5; 
+                if (relOrientNavio2 < 60) collisionDamage2 *= 1.5; 
+
+                collisionDamage1 = Math.round(collisionDamage1);
+                collisionDamage2 = Math.round(collisionDamage2);
+
+                const bandaImpactoNav1 = obtenerBandaImpactoColision(navio1, {x: navio1.globalX, y: navio1.globalY}, navio2, {x: navio2.globalX, y: navio2.globalY}); 
+                navio1.recibirDaño(collisionDamage1, 'CASCO', `${navio2.nombre} (Colisión)`, bandaImpactoNav1, null, { tipo: 'COLISION', mastilAfectado: null }, null, false, false); 
+
+                const bandaImpactoNav2 = obtenerBandaImpactoColision(navio2, {x: navio2.globalX, y: navio2.globalY}, navio1, {x: navio1.globalX, y: navio1.globalY});
+                navio2.recibirDaño(collisionDamage2, 'CASCO', `${navio1.nombre} (Colisión)`, bandaImpactoNav2, null, { tipo: 'COLISION', mastilAfectado: null }, null, false, false); 
+                
+                navio1.aplicarBajas(collisionDamage1 * BAJAS_COLISION_FACTOR, "por colisión");
+                navio2.aplicarBajas(collisionDamage2 * BAJAS_COLISION_FACTOR, "por colisión");
+
+                if (baseDamageCollision > 0) { 
+                    if (colisionInfo.tipoNavioA === 'STERN' && colisionInfo.tipoNavioB === 'BOW' && !navio1.rudderDamaged) { 
+                        const diferenciaVelas = Math.max(0, VELAMEN_MAP[navio2.velamenEfectivoEnTurno] - VELAMEN_MAP[navio1.velamenEfectivoEnTurno]);
+                        let probabilidadDano = BASE_RUDDER_DAMAGE_CHANCE_STERN_COLLISION + (diferenciaVelas * RUDDER_DAMAGE_BONUS_PER_SAIL_DIFFERENCE);
+                        probabilidadDano = Math.min(MAX_RUDDER_DAMAGE_CHANCE_STERN_COLLISION, probabilidadDano); 
+                        probabilidadDano = Math.max(BASE_RUDDER_DAMAGE_CHANCE_STERN_COLLISION, probabilidadDano); 
+
+                        if (Math.random() < probabilidadDano) {
+                            navio1.rudderDamaged = true;
+                            agregarAlReporte(`¡Timón del ${navio1.nombre} dañado por colisión en la popa! (Prob: ${(probabilidadDano * 100).toFixed(0)}%)`);
+                            mensajesPrioritariosTurno.push(`¡Timón del ${navio1.nombre} DAÑADO por Colisión!`);
+                        }
+                    }
+                    if (colisionInfo.tipoNavioB === 'STERN' && colisionInfo.tipoNavioA === 'BOW' && !navio2.rudderDamaged) { 
+                        const diferenciaVelas = Math.max(0, VELAMEN_MAP[navio1.velamenEfectivoEnTurno] - VELAMEN_MAP[navio2.velamenEfectivoEnTurno]);
+                        let probabilidadDano = BASE_RUDDER_DAMAGE_CHANCE_STERN_COLLISION + (diferenciaVelas * RUDDER_DAMAGE_BONUS_PER_SAIL_DIFFERENCE);
+                        probabilidadDano = Math.min(MAX_RUDDER_DAMAGE_CHANCE_STERN_COLLISION, probabilidadDano); 
+                        probabilidadDano = Math.max(BASE_RUDDER_DAMAGE_CHANCE_STERN_COLLISION, probabilidadDano); 
+                        
+                        if (Math.random() < probabilidadDano) {
+                            navio2.rudderDamaged = true;
+                            agregarAlReporte(`¡Timón del ${navio2.nombre} dañado por colisión en la popa! (Prob: ${(probabilidadDano * 100).toFixed(0)}%)`);
+                            mensajesPrioritariosTurno.push(`¡Timón del ${navio2.nombre} DAÑADO por Colisión!`);
+                        }
+                    }
+
+                    const riggingDmg1 = Math.round(collisionDamage1 * RIGGING_DAMAGE_COLLISION_FACTOR);
+                    if (riggingDmg1 > 0) {
+                        let mastTarget1 = (colisionInfo.tipoNavioA === 'BOW') ? 'TRINQUETE' : (colisionInfo.tipoNavioA === 'STERN') ? 'MESANA' : 'MAYOR';
+                        navio1.recibirDaño(riggingDmg1, 'APAREJO', `${navio2.nombre} (Colisión)`, null, null, { tipo: 'COLISION', mastilAfectado: mastTarget1 }, null, false, false);
+                    }
+
+                    const riggingDmg2 = Math.round(collisionDamage2 * RIGGING_DAMAGE_COLLISION_FACTOR);
+                     if (riggingDmg2 > 0) {
+                        let mastTarget2 = (colisionInfo.tipoNavioB === 'BOW') ? 'TRINQUETE' : (colisionInfo.tipoNavioB === 'STERN') ? 'MESANA' : 'MAYOR';
+                        navio2.recibirDaño(riggingDmg2, 'APAREJO', `${navio1.nombre} (Colisión)`, null, null, { tipo: 'COLISION', mastilAfectado: mastTarget2 }, null, false, false);
+                    }
+                }
+
+                actualizarInfoNavio(); 
+                actualizarInfoObjetivo();
+                return true; 
+            }
+            return false; 
+        }
+
+
+        function procesarFatigaFinDeTurno() { 
+            if (fatigaGeneradaEsteTurno > 0) {
+                miNavio.fatigaTripulacion += fatigaGeneradaEsteTurno;
+            } else { 
+                miNavio.fatigaTripulacion -= FATIGA_RECUPERACION_TURNO_SIN_ACCION;
+            }
+            miNavio.fatigaTripulacion = Math.max(0, Math.min(100, miNavio.fatigaTripulacion)); 
+
+            if (fatigaGeneradaEsteTurnoAI > 0) {
+                navioObjetivo.fatigaTripulacion += fatigaGeneradaEsteTurnoAI;
+            } else {
+                navioObjetivo.fatigaTripulacion -= FATIGA_RECUPERACION_TURNO_SIN_ACCION;
+            }
+            navioObjetivo.fatigaTripulacion = Math.max(0, Math.min(100, navioObjetivo.fatigaTripulacion));
+            fatigaGeneradaEsteTurnoAI = 0; 
+        }
+
+        function agregarAlReporte(mensaje) { 
+            turnReportLog.push(mensaje); 
+            if (turnReportLog.length > MAX_REPORT_ENTRIES) {
+                turnReportLog.shift(); 
+            }
+            actualizarDisplayReporte();
+        }
+
+        function actualizarDisplayReporte() {
+            const panel = document.getElementById('turnReportPanel');
+            if (!panel) return;
+
+            panel.innerHTML = ''; 
+            turnReportLog.forEach(msg => {
+                const p = document.createElement('p');
+                p.textContent = msg;
+                if (msg.startsWith('--- INICIO TURNO')) {
+                    const turnNumMatch = msg.match(/\d+/);
+                    if (turnNumMatch) {
+                        p.id = `inicio-turno-${turnNumMatch[0]}`;
+                    }
+                } else if (msg.startsWith("--- INICIO PARTIDA ---")) {
+                    p.id = "inicio-partida-marker"; 
+                }
+                panel.appendChild(p);
+            });
+        }
+
+        function actualizarInfoNavio() { 
+            document.getElementById('navioNombre').textContent = miNavio.nombre;
+            document.getElementById('miNavioSaludCasco').textContent = `${(miNavio.saludCasco / miNavio.maxSaludCasco * 100).toFixed(0)}% (${miNavio.saludCasco}/${miNavio.maxSaludCasco})`;
+            const tripEl = document.getElementById('miNavioTripulacion');
+            tripEl.textContent = `${miNavio.tripulacionOperativa}/${miNavio.tripulacionInicial}`;
+            tripEl.classList.toggle('tripulacion-baja', miNavio.tripulacionOperativa < miNavio.tripulacionInicial * 0.5);
+
+
+            const trinqueteSaludEl = document.getElementById('miNavioSaludTrinquete');
+            const mayorSaludEl = document.getElementById('miNavioSaludMayor');
+            const mesanaSaludEl = document.getElementById('miNavioSaludMesana');
+
+            trinqueteSaludEl.textContent = miNavio.mastilTrinqueteCaido ? "CAÍDO" : `${(miNavio.saludMastilTrinquete / miNavio.maxSaludMastilTrinquete * 100).toFixed(0)}%`;
+            mayorSaludEl.textContent = miNavio.mastilMayorCaido ? "CAÍDO" : `${(miNavio.saludMastilMayor / miNavio.maxSaludMastilMayor * 100).toFixed(0)}%`;
+            mesanaSaludEl.textContent = miNavio.mastilMesanaCaido ? "CAÍDO" : `${(miNavio.saludMastilMesana / miNavio.maxSaludMastilMesana * 100).toFixed(0)}%`;
+
+            [trinqueteSaludEl, mayorSaludEl, mesanaSaludEl].forEach((el, index) => {
+                let mastHealthPercent;
+                let mastFallen;
+                if (index === 0) { mastHealthPercent = miNavio.saludMastilTrinquete / miNavio.maxSaludMastilTrinquete; mastFallen = miNavio.mastilTrinqueteCaido; }
+                else if (index === 1) { mastHealthPercent = miNavio.saludMastilMayor / miNavio.maxSaludMastilMayor; mastFallen = miNavio.mastilMayorCaido; }
+                else { mastHealthPercent = miNavio.saludMastilMesana / miNavio.maxSaludMastilMesana; mastFallen = miNavio.mastilMesanaCaido; }
+
+                el.classList.remove('mast-health-critical', 'mast-health-medium', 'mast-fallen');
+                if (mastFallen) {
+                    el.classList.add('mast-fallen');
+                } else if (mastHealthPercent <= 0.3) {
+                    el.classList.add('mast-health-critical');
+                } else if (mastHealthPercent <= 0.6) {
+                    el.classList.add('mast-health-medium');
+                }
+            });
+
+
+            document.getElementById('miNavioCanonesBabor').textContent = `${miNavio.canonesBaborOperativos}/${miNavio.maxCanonesPorBanda}`;
+            document.getElementById('miNavioCanonesEstribor').textContent = `${miNavio.canonesEstriborOperativos}/${miNavio.maxCanonesPorBanda}`;
+            const estadoTimonEl = document.getElementById('miNavioEstadoTimon');
+            estadoTimonEl.textContent = miNavio.rudderDamaged ? "DAÑADO" : "OPERATIVO";
+            estadoTimonEl.className = miNavio.rudderDamaged ? "rudder-damaged-text" : "";
+            document.getElementById('miNavioEficienciaVelocidad').textContent = `${(miNavio.eficienciaVelocidadActual * 100).toFixed(0)}%`;
+            document.getElementById('miNavioExperiencia').textContent = miNavio.crewExperience.toUpperCase();
+            document.getElementById('navioVelamenEfectivo').textContent = miNavio.velamenEfectivoEnTurno; 
+            document.getElementById('miNavioMunicionCargada').textContent = miNavio.municionCargada.replace('_',' ').toUpperCase();
+            document.getElementById('miNavioMunicionEnCarga').textContent = miNavio.municionParaSiguienteCarga.replace('_',' ').toUpperCase();
+
+
+            document.getElementById('navioGlobalPosX').textContent = miNavio.globalX.toFixed(0);
+            document.getElementById('navioGlobalPosY').textContent = miNavio.globalY.toFixed(0);
+            document.getElementById('navioOrientacion').textContent = miNavio.orientacionActualGrados.toFixed(1) + "°";
+            document.getElementById('navioVelamen').textContent = miNavio.velamenActual; 
+            document.getElementById('navioTimonPuntos').textContent = miNavio.posicionTimonActualPuntos; 
+            document.getElementById('navioTimonAnterior').textContent = miNavio.posicionTimonAnteriorPuntos;
+            const fatigaEl = document.getElementById('navioFatiga');
+            fatigaEl.textContent = miNavio.fatigaTripulacion + "%";
+            let umbralFatigaJugador; 
+            switch(miNavio.crewExperience) {
+                case 'NOVATA': umbralFatigaJugador = UMBRAL_PENALIZACION_FATIGA_NOVATA; break;
+                case 'VETERANA': umbralFatigaJugador = UMBRAL_PENALIZACION_FATIGA_VETERANA; break;
+                default: umbralFatigaJugador = UMBRAL_PENALIZACION_FATIGA_NORMAL;
+            }
+            fatigaEl.classList.toggle('fatiga-alta', miNavio.fatigaTripulacion > umbralFatigaJugador && !(miNavio.crewExperience === 'VETERANA' && miNavio.fatigaTripulacion < 100));
+
+
+            document.getElementById('navioOrdenDisparo').textContent = miNavio.ordenDisparoLista && miNavio.ordenDisparo ? `${miNavio.ordenDisparo.banda} (${miNavio.ordenDisparo.seccion} a ${miNavio.ordenDisparo.apuntarA})` : 'NINGUNA';
+
+            const jugadorConfirmadoEl = document.getElementById('jugadorOrdenesConfirmadas');
+            jugadorConfirmadoEl.textContent = miNavio.ordenesConfirmadas ? "SÍ" : "NO";
+            jugadorConfirmadoEl.className = miNavio.ordenesConfirmadas ? "text-green-400" : "text-red-400";
+
+        }
+        function actualizarInfoObjetivo() { 
+            document.getElementById('nombreObjetivo').textContent = navioObjetivo.nombre;
+            document.getElementById('objetivoSaludCasco').textContent = `${(navioObjetivo.saludCasco / navioObjetivo.maxSaludCasco * 100).toFixed(0)}% (${navioObjetivo.saludCasco}/${navioObjetivo.maxSaludCasco})`;
+            const tripAIEl = document.getElementById('aiTripulacion');
+            tripAIEl.textContent = `${navioObjetivo.tripulacionOperativa}/${navioObjetivo.tripulacionInicial}`;
+            tripAIEl.classList.toggle('tripulacion-baja', navioObjetivo.tripulacionOperativa < navioObjetivo.tripulacionInicial * 0.5);
+
+
+            let mastsDown = 0;
+            if(navioObjetivo.mastilTrinqueteCaido) mastsDown++;
+            if(navioObjetivo.mastilMayorCaido) mastsDown++;
+            if(navioObjetivo.mastilMesanaCaido) mastsDown++;
+            let aparejoStatus = "INTACTO";
+            if (mastsDown === 3) aparejoStatus = "SIN MÁSTILES";
+            else if (mastsDown > 0) aparejoStatus = `${mastsDown} MÁSTIL(ES) CAÍDO(S)`;
+            else {
+                const saludTotalAparejo = navioObjetivo.saludMastilTrinquete + navioObjetivo.saludMastilMayor + navioObjetivo.saludMastilMesana;
+                const maxSaludTotalAparejo = navioObjetivo.maxSaludMastilTrinquete + navioObjetivo.maxSaludMastilMayor + navioObjetivo.maxSaludMastilMesana;
+                if (maxSaludTotalAparejo > 0) {
+                    const percentAparejo = saludTotalAparejo / maxSaludTotalAparejo;
+                    if (percentAparejo < 0.3) aparejoStatus = "MUY DAÑADO";
+                    else if (percentAparejo < 0.7) aparejoStatus = "DAÑADO";
+                    else if (percentAparejo < 1) aparejoStatus = "LIGERAMENTE DAÑADO";
+                }
+            }
+            document.getElementById('objetivoSaludAparejoGeneral').textContent = aparejoStatus;
+
+
+            document.getElementById('aiCanonesBabor').textContent = `${navioObjetivo.canonesBaborOperativos}/${navioObjetivo.maxCanonesPorBanda}`;
+            document.getElementById('aiCanonesEstribor').textContent = `${navioObjetivo.canonesEstriborOperativos}/${navioObjetivo.maxCanonesPorBanda}`;
+            const aiEstadoTimonEl = document.getElementById('aiEstadoTimon');
+            aiEstadoTimonEl.textContent = navioObjetivo.rudderDamaged ? "DAÑADO" : "OPERATIVO";
+            aiEstadoTimonEl.className = navioObjetivo.rudderDamaged ? "rudder-damaged-text" : "";
+            document.getElementById('aiEficienciaVelocidad').textContent = `${(navioObjetivo.eficienciaVelocidadActual * 100).toFixed(0)}%`;
+            document.getElementById('aiExperiencia').textContent = navioObjetivo.crewExperience.toUpperCase();
+            document.getElementById('aiVelamenEfectivo').textContent = navioObjetivo.velamenEfectivoEnTurno; 
+            document.getElementById('aiFatiga').textContent = `${navioObjetivo.fatigaTripulacion}%`;
+
+
+            const corsarioConfirmadoEl = document.getElementById('corsarioOrdenesConfirmadas');
+            corsarioConfirmadoEl.textContent = navioObjetivo.ordenesConfirmadas ? "SÍ" : "NO"; 
+            corsarioConfirmadoEl.className = navioObjetivo.ordenesConfirmadas ? "text-green-400" : "text-red-400";
+        }
+
+        function actualizarDistanciaAObjetivo(event) { 
+            const rect = canvas.getBoundingClientRect();
+            const mouseX = event.clientX - rect.left;
+            const mouseY = event.clientY - rect.top;
+
+            const objLocalX = navioObjetivo.globalX - camaraX + canvas.width / 2;
+            const objLocalY = navioObjetivo.globalY - camaraY + canvas.height / 2;
+            const hoverDistX = Math.abs(mouseX - objLocalX);
+            const hoverDistY = Math.abs(mouseY - objLocalY);
+
+            const infoEl = document.getElementById('distanciaObjetivoInfo');
+            if (hoverDistX < navioObjetivo.tamano.ancho * 1.5 && hoverDistY < navioObjetivo.tamano.largo * 1.5) { 
+                const dxNavioObj = navioObjetivo.globalX - miNavio.globalX;
+                const dyNavioObj = navioObjetivo.globalY - miNavio.globalY;
+                const distNavioToObj = Math.sqrt(dxNavioObj*dxNavioObj + dyNavioObj*dyNavioObj);
+
+                let angle_rad_player_to_target = Math.atan2(dxNavioObj, -dyNavioObj);
+                let anguloAlObjetivo_world = (angle_rad_player_to_target * 180 / Math.PI + 360) % 360;
+                const anguloRelativoJugadorHaciaObjetivo = (anguloAlObjetivo_world - miNavio.orientacionActualGrados + 360) % 360; 
+
+                let mensajeTiroDetalle = "Fuera de arco de tiro.";
+                if (anguloRelativoJugadorHaciaObjetivo >= ARC_E_COMPLETA_INICIO && anguloRelativoJugadorHaciaObjetivo <= ARC_E_COMPLETA_FIN) {
+                    mensajeTiroDetalle = "Estribor (Banda Completa).";
+                } else if (anguloRelativoJugadorHaciaObjetivo >= ARC_E_MEDIA_PROA_INICIO && anguloRelativoJugadorHaciaObjetivo < ARC_E_MEDIA_PROA_FIN) {
+                    mensajeTiroDetalle = "Estribor (Media Proa).";
+                } else if (anguloRelativoJugadorHaciaObjetivo > ARC_E_MEDIA_POPA_INICIO && anguloRelativoJugadorHaciaObjetivo <= ARC_E_MEDIA_POPA_FIN) {
+                    mensajeTiroDetalle = "Estribor (Media Popa).";
+                } else if (anguloRelativoJugadorHaciaObjetivo >= ARC_B_COMPLETA_INICIO && anguloRelativoJugadorHaciaObjetivo <= ARC_B_COMPLETA_FIN) {
+                    mensajeTiroDetalle = "Babor (Banda Completa).";
+                } else if (anguloRelativoJugadorHaciaObjetivo > ARC_B_MEDIA_PROA_INICIO && anguloRelativoJugadorHaciaObjetivo <= ARC_B_MEDIA_PROA_FIN) {
+                    mensajeTiroDetalle = "Babor (Media Proa).";
+                } else if (anguloRelativoJugadorHaciaObjetivo >= ARC_B_MEDIA_POPA_INICIO && anguloRelativoJugadorHaciaObjetivo < ARC_B_MEDIA_POPA_FIN) {
+                    mensajeTiroDetalle = "Babor (Media Popa).";
+                }
+                
+                let mensajeBarrido = "";
+                if (miNavio.ordenDisparoLista && mensajeTiroDetalle !== "Fuera de arco de tiro.") { 
+                    const dx_obj_to_player = miNavio.globalX - navioObjetivo.globalX;
+                    const dy_obj_to_player = miNavio.globalY - navioObjetivo.globalY;
+                    let angle_rad_obj_to_player = Math.atan2(dx_obj_to_player, -dy_obj_to_player);
+                    let anguloAlJugadorDesdeObjetivo_world = (angle_rad_obj_to_player * 180 / Math.PI + 360) % 360;
+                    let relative_angle_of_player_to_target_bow = (anguloAlJugadorDesdeObjetivo_world - navioObjetivo.orientacionActualGrados + 360) % 360;
+
+                    const esBarridoProa = (relative_angle_of_player_to_target_bow <= BOW_RAKE_MAX_ANGLE || relative_angle_of_player_to_target_bow >= BOW_RAKE_MIN_ANGLE);
+                    const esBarridoPopa = (relative_angle_of_player_to_target_bow >= STERN_RAKE_MIN_ANGLE && relative_angle_of_player_to_target_bow <= STERN_RAKE_MAX_ANGLE);
+
+                    if (esBarridoPopa) {
+                        mensajeBarrido = " ¡BARRIDO DE POPA!";
+                    } else if (esBarridoProa) {
+                        mensajeBarrido = " ¡BARRIDO DE PROA!";
+                    }
+                }
+                infoEl.textContent = `Dist.: ${distNavioToObj.toFixed(0)}m. Blanco: ${mensajeTiroDetalle}${mensajeBarrido}`;
+
+            } else {
+                infoEl.textContent = "Pasa el cursor sobre el objetivo...";
+            }
+        }
+
+        function dibujarRosaDeLosVientos(ctx, x, y, radius) { 
+            ctx.save();
+            ctx.translate(x, y);
+
+            ctx.beginPath();
+            ctx.arc(0, 0, radius, 0, 2 * Math.PI);
+            ctx.strokeStyle = 'rgba(200, 200, 200, 0.5)';
+            ctx.lineWidth = 1;
+            ctx.stroke();
+
+            ctx.fillStyle = 'white';
+            ctx.font = `${radius * 0.25}px Segoe UI`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+
+            ctx.fillText('N', 0, -radius * 0.75);
+            ctx.fillText('E', radius * 0.75, 0);
+            ctx.fillText('S', 0, radius * 0.75);
+            ctx.fillText('O', -radius * 0.75, 0); 
+
+            ctx.lineWidth = 1;
+            for (let i = 0; i < 4; i++) { 
+                ctx.rotate(gradosARadianes(45));
+                ctx.beginPath();
+                ctx.moveTo(0, -radius * 0.85);
+                ctx.lineTo(0, -radius * 0.95);
+                ctx.stroke();
+            }
+            ctx.rotate(gradosARadianes(-45*4)); 
+
+            ctx.rotate(gradosARadianes(direccionVientoGrados + 180)); 
+            ctx.beginPath();
+            ctx.moveTo(0, -radius * 0.6); 
+            ctx.lineTo(radius * 0.15, 0);  
+            ctx.lineTo(radius * 0.05, 0);  
+            ctx.lineTo(radius * 0.05, radius * 0.4); 
+            ctx.lineTo(-radius * 0.05, radius * 0.4);
+            ctx.lineTo(-radius * 0.05, 0); 
+            ctx.lineTo(-radius * 0.15, 0); 
+            ctx.closePath();
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+            ctx.fill();
+            ctx.strokeStyle = 'black';
+            ctx.lineWidth = 0.5;
+            ctx.stroke();
+
+            ctx.restore();
+        }
+
+
+        function dibujarArcosDeTiro(navio, ctx, camX, camY) { 
+            if (!navio || navio.isSunk) return; 
+
+            const localX = navio.globalX - camX + canvas.width / 2;
+            const localY = navio.globalY - camY + canvas.height / 2;
+
+            ctx.save();
+            ctx.translate(localX, localY);
+            ctx.rotate(gradosARadianes(navio.orientacionActualGrados)); 
+
+            const anguloInicioTotalEstribor = gradosARadianes(ARC_E_MEDIA_PROA_INICIO - 90); 
+            const anguloFinTotalEstribor = gradosARadianes(ARC_E_MEDIA_POPA_FIN - 90);   
+
+            const anguloInicioTotalBabor = gradosARadianes(ARC_B_MEDIA_POPA_INICIO - 90); 
+            const anguloFinTotalBabor = gradosARadianes(ARC_B_MEDIA_PROA_FIN - 90);  
+
+            let colorEstribor, colorBabor;
+            if (navio === miNavio) { 
+                colorEstribor = (navio.ordenDisparoLista && navio.ordenDisparo && navio.ordenDisparo.banda === 'ESTRIBOR') ? ARC_COLOR_ACTIVA_JUGADOR : ARC_COLOR_INACTIVA_JUGADOR_ESTRIBOR;
+                colorBabor = (navio.ordenDisparoLista && navio.ordenDisparo && navio.ordenDisparo.banda === 'BABOR') ? ARC_COLOR_ACTIVA_JUGADOR : ARC_COLOR_INACTIVA_JUGADOR_BABOR;
+            } else { 
+                colorEstribor = (navio.ordenDisparoLista && navio.ordenDisparo && navio.ordenDisparo.banda === 'ESTRIBOR') ? ARC_COLOR_ACTIVA_AI : ARC_COLOR_INACTIVA_AI_ESTRIBOR;
+                colorBabor = (navio.ordenDisparoLista && navio.ordenDisparo && navio.ordenDisparo.banda === 'BABOR') ? ARC_COLOR_ACTIVA_AI : ARC_COLOR_INACTIVA_AI_BABOR;
+            }
+
+            ctx.beginPath();
+            ctx.moveTo(0, 0); 
+            ctx.arc(0, 0, MAX_VISUAL_RANGE_ARC, anguloInicioTotalEstribor, anguloFinTotalEstribor);
+            ctx.closePath();
+            ctx.fillStyle = colorEstribor;
+            ctx.fill();
+            ctx.strokeStyle = ARC_STROKE_COLOR;
+            ctx.stroke();
+
+            ctx.beginPath();
+            ctx.moveTo(0, 0);
+            ctx.arc(0, 0, MAX_VISUAL_RANGE_ARC, anguloInicioTotalBabor, anguloFinTotalBabor);
+            ctx.closePath();
+            ctx.fillStyle = colorBabor;
+            ctx.fill();
+            ctx.strokeStyle = ARC_STROKE_COLOR;
+            ctx.stroke();
+
+            ctx.restore();
+        }
+
+        function dibujarTodo() { 
+            if (!ctx) return;
+            ctx.clearRect(0, 0, canvas.width, canvas.height); 
+
+            ctx.strokeStyle = '#2c5282'; 
+            ctx.lineWidth = 0.5;
+            const gridSize = 50; 
+
+            const worldViewLeft = camaraX - canvas.width / 2;
+            const worldViewTop = camaraY - canvas.height / 2;
+
+            const firstVertLineX = Math.floor(worldViewLeft / gridSize) * gridSize;
+            for (let x = firstVertLineX; x < worldViewLeft + canvas.width + gridSize; x += gridSize) {
+                const canvasX = x - worldViewLeft; 
+                if (canvasX >=0 && canvasX <= canvas.width) { 
+                    ctx.beginPath(); ctx.moveTo(canvasX, 0); ctx.lineTo(canvasX, canvas.height); ctx.stroke();
+                }
+            }
+            const firstHorizLineY = Math.floor(worldViewTop / gridSize) * gridSize;
+            for (let y = firstHorizLineY; y < worldViewTop + canvas.height + gridSize; y += gridSize) {
+                const canvasY = y - worldViewTop;
+                 if (canvasY >=0 && canvasY <= canvas.height) {
+                    ctx.beginPath(); ctx.moveTo(0, canvasY); ctx.lineTo(canvas.width, canvasY); ctx.stroke();
+                }
+            }
+
+            if (miNavio) {
+                dibujarArcosDeTiro(miNavio, ctx, camaraX, camaraY);
+            }
+            if (navioObjetivo) {
+                dibujarArcosDeTiro(navioObjetivo, ctx, camaraX, camaraY);
+            }
+
+            if (navioSombra && navioSombra.visible && miNavio && !miNavio.isSunk) { 
+                navioSombra.dibujar(ctx, camaraX, camaraY);
+            }
+            if (miNavio) miNavio.dibujar(ctx, camaraX, camaraY);
+            if (navioObjetivo) navioObjetivo.dibujar(ctx, camaraX, camaraY);
+
+            dibujarRosaDeLosVientos(ctx, canvas.width - 50, 50, 30, direccionVientoGrados, intensidadViento);
+        }
+
+        function actualizarEstadoBotonesComando() { 
+            const controlesDeshabilitados = miNavio.ordenesConfirmadas || miNavio.isSunk || isAnimatingMovement;
+
+            document.querySelectorAll('#velamen-controls .cmd-button').forEach(btn => {
+                const velamenBoton = btn.dataset.velamen;
+                btn.classList.remove('estado-actual', 'orden-activa');
+                btn.disabled = controlesDeshabilitados;
+
+                if (velamenBoton === miNavio.velamenActual) btn.classList.add('estado-actual'); 
+                if (velamenBoton === miNavio.ordenVelamen) btn.classList.add('orden-activa');   
+
+                if (!controlesDeshabilitados && ((miNavio.velamenActual === 'NV' && velamenBoton === 'TV') ||
+                    (miNavio.velamenActual === 'TV' && velamenBoton === 'NV'))) {
+                    btn.disabled = true;
+                }
+            });
+
+             document.querySelectorAll('#timon-controls .cmd-button').forEach(btn => {
+                const puntoTimonBoton = parseInt(btn.dataset.timon);
+                btn.classList.remove('estado-actual', 'orden-activa');
+                btn.disabled = controlesDeshabilitados;
+
+                if (puntoTimonBoton === miNavio.posicionTimonActualPuntos) btn.classList.add('estado-actual'); 
+                if (puntoTimonBoton === miNavio.ordenTimon) btn.classList.add('orden-activa');   
+
+                if (!controlesDeshabilitados) { 
+                    const esValidoParaOrden = validarOrdenTimon(miNavio, puntoTimonBoton); 
+                    if (!esValidoParaOrden) btn.disabled = true;
+                }
+            });
+            document.getElementById('confirmarOrdenesJugador').disabled = controlesDeshabilitados || isAnimatingMovement;
+            if (miNavio.ordenesConfirmadas && !miNavio.isSunk && !isAnimatingMovement) { 
+                document.getElementById('confirmarOrdenesJugador').classList.add('orden-confirmada-jugador');
+            } else {
+                document.getElementById('confirmarOrdenesJugador').classList.remove('orden-confirmada-jugador');
+            }
+        }
+
+        function actualizarEstadoBotonesDisparo() { 
+            const controlesDeshabilitados = miNavio.ordenesConfirmadas || miNavio.isSunk || isAnimatingMovement;
+            const btnBabor = document.getElementById('dispararBabor');
+            const btnEstribor = document.getElementById('dispararEstribor');
+            const btnCancelar = document.getElementById('cancelarDisparo');
+            const municionSelectEl = document.getElementById('municionSelect');
+
+            btnBabor.disabled = controlesDeshabilitados;
+            btnEstribor.disabled = controlesDeshabilitados;
+            btnCancelar.disabled = controlesDeshabilitados;
+            municionSelectEl.disabled = controlesDeshabilitados;
+
+
+            btnBabor.classList.remove('orden-disparo-activa'); 
+            btnEstribor.classList.remove('orden-disparo-activa');
+
+            if (miNavio.ordenDisparoLista && miNavio.ordenDisparo) { 
+                if (miNavio.ordenDisparo.banda === 'BABOR') btnBabor.classList.add('orden-disparo-activa');
+                if (miNavio.ordenDisparo.banda === 'ESTRIBOR') btnEstribor.classList.add('orden-disparo-activa');
+            }
+            if(!isAnimatingMovement) dibujarTodo(); 
+            actualizarInfoNavio(); 
+        }
+
+        function actualizarEstadoBotonPasarTurno() { 
+            document.getElementById('pasarTurno').disabled =
+                !(miNavio.ordenesConfirmadas && navioObjetivo.ordenesConfirmadas) || 
+                miNavio.isSunk ||
+                navioObjetivo.isSunk ||
+                isAnimatingMovement ||
+                isPaused; 
+        }
+
+        function actualizarEstadoBotonPausa() { 
+            const pausaBtn = document.getElementById('pausaJuego');
+            pausaBtn.disabled = isAnimatingMovement || (miNavio && miNavio.isSunk) || (navioObjetivo && navioObjetivo.isSunk); 
+            if (isPaused) {
+                pausaBtn.textContent = 'Reanudar';
+                pausaBtn.classList.add('paused');
+            } else {
+                pausaBtn.textContent = 'Pausar';
+                pausaBtn.classList.remove('paused');
+            }
+        }
+
+        function iniciarIntervaloCronometro() { 
+            if (intervaloCronometro) clearInterval(intervaloCronometro); 
+            if (isPaused || isAnimatingMovement || (miNavio && miNavio.isSunk) || (navioObjetivo && navioObjetivo.isSunk)) {
+                 actualizarDisplayCronometro(); 
+                 return;
+            }
+
+            intervaloCronometro = setInterval(() => {
+                if (isPaused) return; 
+                tiempoRestanteTurnoSegundos--;
+                actualizarDisplayCronometro();
+                if (tiempoRestanteTurnoSegundos <= 0 && !isAnimatingMovement) { 
+                    resolverTurnoCompleto('timeout');
+                }
+            }, 1000);
+        }
+
+
+        function iniciarCronometro() { 
+            tiempoRestanteTurnoSegundos = tiempoTotalTurnoSegundos;
+            actualizarDisplayCronometro();
+            iniciarIntervaloCronometro(); 
+        }
+
+        function actualizarDisplayCronometro() { 
+            const minutos = Math.floor(tiempoRestanteTurnoSegundos / 60);
+            const segundos = tiempoRestanteTurnoSegundos % 60;
+            document.getElementById('cronometroTurno').textContent = `Tiempo: ${minutos.toString().padStart(2, '0')}:${segundos.toString().padStart(2, '0')}`;
+        }
+
+        function loopAnimacionMovimiento(timestamp) { 
+            if (!isAnimatingMovement) return;
+
+            const elapsedTime = timestamp - movementAnimationStartTime;
+            let progress = Math.min(elapsedTime / MOVEMENT_ANIMATION_DURATION, 1); 
+
+            if (!miNavio.isSunk) {
+                miNavio.globalX = miNavio.startX + (miNavio.targetX - miNavio.startX) * progress;
+                miNavio.globalY = miNavio.startY + (miNavio.targetY - miNavio.startY) * progress;
+                miNavio.orientacionActualGrados = interpolarAngulo(miNavio.startOrientacion, miNavio.targetOrientacion, progress);
+                miNavio.actualizarPuntosDeColision();
+            }
+
+            if (!navioObjetivo.isSunk) {
+                navioObjetivo.globalX = navioObjetivo.startX + (navioObjetivo.targetX - navioObjetivo.startX) * progress;
+                navioObjetivo.globalY = navioObjetivo.startY + (navioObjetivo.targetY - navioObjetivo.startY) * progress;
+                navioObjetivo.orientacionActualGrados = interpolarAngulo(navioObjetivo.startOrientacion, navioObjetivo.targetOrientacion, progress);
+                navioObjetivo.actualizarPuntosDeColision();
+            }
+
+            if (!cameraManuallyMoved && miNavio) {
+                camaraX = miNavio.globalX;
+                camaraY = miNavio.globalY;
+            }
+
+            dibujarTodo(); 
+
+            if (progress < 1) { 
+                animationFrameId = requestAnimationFrame(loopAnimacionMovimiento); 
+            } else { 
+                isAnimatingMovement = false;
+                if (!miNavio.isSunk) {
+                    miNavio.globalX = miNavio.targetX;
+                    miNavio.globalY = miNavio.targetY;
+                    miNavio.orientacionActualGrados = miNavio.targetOrientacion;
+                    miNavio.actualizarPuntosDeColision();
+                }
+                if (!navioObjetivo.isSunk) {
+                    navioObjetivo.globalX = navioObjetivo.targetX;
+                    navioObjetivo.globalY = navioObjetivo.targetY;
+                    navioObjetivo.orientacionActualGrados = navioObjetivo.targetOrientacion;
+                    navioObjetivo.actualizarPuntosDeColision();
+                }
+
+                procesarEventosPostAnimacion(); 
+            }
+        }
+
+        function iniciarAnimacionMovimiento() { 
+            if (isAnimatingMovement) return; 
+            isAnimatingMovement = true;
+            movementAnimationStartTime = performance.now(); 
+
+            actualizarEstadoBotonesComando();
+            actualizarEstadoBotonesDisparo();
+            actualizarEstadoBotonPasarTurno();
+            actualizarEstadoBotonPausa();
+
+            if (animationFrameId) cancelAnimationFrame(animationFrameId); 
+            animationFrameId = requestAnimationFrame(loopAnimacionMovimiento); 
+        }
+
+        function procesarEventosPostAnimacion() { 
+            resolverColisiones(miNavio, navioObjetivo); 
+
+            if (miNavio.ordenDisparoLista && miNavio.ordenDisparo && !miNavio.isSunk && !navioObjetivo.isSunk) {
+                executeFireOrder(miNavio, navioObjetivo);
+            }
+
+            if (navioObjetivo.ordenDisparoLista && navioObjetivo.ordenDisparo && !navioObjetivo.isSunk && !miNavio.isSunk) {
+                executeFireOrder(navioObjetivo, miNavio);
+            }
+            
+            if (miNavio.municionParaSiguienteCarga !== miNavio.municionCargada) {
+                 agregarAlReporte(`${miNavio.nombre} está cargando ${miNavio.municionParaSiguienteCarga.replace('_',' ').toLowerCase()} para el próximo turno.`);
+            }
+            miNavio.municionCargada = miNavio.municionParaSiguienteCarga;
+            navioObjetivo.municionCargada = navioObjetivo.municionParaSiguienteCarga;
+
+            let gameOverBySinking = false;
+            [miNavio, navioObjetivo].forEach(navio => {
+                if (navio.cascoDestruido && !navio.isSunk) {
+                    if (navio.saludCasco <= 0 && Math.random() < 0.10) { 
+                        navio.isSunk = true;
+                        agregarAlReporte(`¡El ${navio.nombre} se ha hundido por daños estructurales masivos!`);
+                        mensajesPrioritariosTurno.push(`¡${navio.nombre} HUNDIDO!`);
+                        gameOverBySinking = true;
+                    }
+                }
+            });
+
+            procesarFatigaFinDeTurno(); 
+
+            actualizarInfoNavio();
+            actualizarInfoObjetivo();
+            actualizarMensajePrincipal(); 
+            dibujarTodo(); 
+
+            if (gameOverBySinking || miNavio.isSunk || navioObjetivo.isSunk) {
+                finalizarPartida();
+            } else {
+                iniciarNuevoTurno();
+            }
+            actualizarEstadoBotonPausa(); 
+        }
+
+
+        function resolverTurnoCompleto(causa) { 
+            if (isAnimatingMovement) return; 
+            if (intervaloCronometro) clearInterval(intervaloCronometro); 
+            intervaloCronometro = null; 
+            mensajesPrioritariosTurno = []; 
+
+            miNavio.forzarSoloViraje = false;
+            navioObjetivo.forzarSoloViraje = false;
+
+            let velamenEfectivoMiNavio = miNavio.velamenActual; 
+            if (VELAMEN_MAP[miNavio.ordenVelamen] !== VELAMEN_MAP[miNavio.velamenActual]) {
+                 velamenEfectivoMiNavio = VELAMEN_MAP_REVERSE[
+                    VELAMEN_MAP[miNavio.ordenVelamen] > VELAMEN_MAP[miNavio.velamenActual] ?
+                    Math.min(VELAMEN_MAP[miNavio.velamenActual] + 1, VELAMEN_MAP[miNavio.ordenVelamen]) :
+                    Math.max(VELAMEN_MAP[miNavio.velamenActual] - 1, VELAMEN_MAP[miNavio.ordenVelamen])
+                ];
+            }
+
+            let { globalX: tX1, globalY: tY1, orientacionActualGrados: tO1 } = calcularResultadoMovimiento(miNavio, velamenEfectivoMiNavio, miNavio.ordenTimon, false);
+            let navio1Proyectado = new Navio("temp1_proy", tX1, tY1, tO1, true); 
+            navio1Proyectado.tamano = miNavio.tamano;
+            navio1Proyectado.actualizarPuntosDeColision();
+
+            let velamenEfectivoAI = navioObjetivo.velamenActual;
+             if (VELAMEN_MAP[navioObjetivo.ordenVelamen] !== VELAMEN_MAP[navioObjetivo.velamenActual]) {
+                 velamenEfectivoAI = VELAMEN_MAP_REVERSE[
+                    VELAMEN_MAP[navioObjetivo.ordenVelamen] > VELAMEN_MAP[navioObjetivo.velamenActual] ?
+                    Math.min(VELAMEN_MAP[navioObjetivo.velamenActual] + 1, VELAMEN_MAP[navioObjetivo.ordenVelamen]) :
+                    Math.max(VELAMEN_MAP[navioObjetivo.velamenActual] - 1, VELAMEN_MAP[navioObjetivo.ordenVelamen])
+                ];
+            }
+            let { globalX: tX2, globalY: tY2, orientacionActualGrados: tO2 } = calcularResultadoMovimiento(navioObjetivo, velamenEfectivoAI, navioObjetivo.ordenTimon, false);
+            let navio2Proyectado = new Navio("temp2_proy", tX2, tY2, tO2, true);
+            navio2Proyectado.tamano = navioObjetivo.tamano;
+            navio2Proyectado.actualizarPuntosDeColision();
+
+            let colisionInminente1 = detectarColisionConTipos(navio1Proyectado, navioObjetivo);
+            if (colisionInminente1.chocan) {
+                if (colisionInminente1.tipoNavioA === 'BOW' && colisionInminente1.tipoNavioB === 'STERN') {
+                    miNavio.forzarSoloViraje = true; 
+                } else {
+                    miNavio.forzarSoloViraje = true;
+                    navioObjetivo.forzarSoloViraje = true; 
+                }
+            }
+
+            if (!navioObjetivo.forzarSoloViraje) {
+                let colisionInminente2 = detectarColisionConTipos(navio2Proyectado, miNavio);
+                 if (colisionInminente2.chocan) {
+                    if (colisionInminente2.tipoNavioA === 'BOW' && colisionInminente2.tipoNavioB === 'STERN') {
+                        navioObjetivo.forzarSoloViraje = true; 
+                    } else {
+                        navioObjetivo.forzarSoloViraje = true;
+                        miNavio.forzarSoloViraje = true; 
+                    }
+                }
+            }
+
+            prepararMovimientoNavio(miNavio);
+            prepararMovimientoNavio(navioObjetivo);
+
+            iniciarAnimacionMovimiento(); 
+        }
+
+        function finalizarPartida() { 
+            if (intervaloCronometro) clearInterval(intervaloCronometro);
+            intervaloCronometro = null;
+            isAnimatingMovement = false; 
+            if(animationFrameId) cancelAnimationFrame(animationFrameId);
+            gameInitialized = false;
+
+
+            document.getElementById('pasarTurno').disabled = true;
+            document.getElementById('confirmarOrdenesJugador').disabled = true;
+
+            actualizarInfoNavio(); 
+            actualizarInfoObjetivo();
+            
+            if (miNavio.isSunk && navioObjetivo.isSunk) {
+                 agregarAlReporte("¡Ambos navíos se han hundido! Empate técnico.");
+                 mensajesPrioritariosTurno.push("¡AMBOS HUNDIDOS! Empate.");
+            } else if (miNavio.isSunk) {
+                 agregarAlReporte(`¡El ${miNavio.nombre} ha sido hundido! Victoria para el ${navioObjetivo.nombre}.`);
+                 mensajesPrioritariosTurno.push(`¡${miNavio.nombre} HUNDIDO! Victoria para ${navioObjetivo.nombre}.`);
+            } else if (navioObjetivo.isSunk) {
+                 agregarAlReporte(`¡El ${navioObjetivo.nombre} ha sido hundido! ¡Victoria para el ${miNavio.nombre}!`);
+                 mensajesPrioritariosTurno.push(`¡${navioObjetivo.nombre} HUNDIDO! Victoria para ${miNavio.nombre}.`);
+            }
+            actualizarMensajePrincipal(); 
+            dibujarTodo();
+            document.getElementById('iniciarConfig').disabled = false;
+            actualizarEstadoBotonPausa(); 
+        }
+
+
+        function iniciarNuevoTurno() {
+            const turnThatJustEnded = currentTurnNumber; 
+            currentTurnNumber++; 
+
+            agregarAlReporte(`--- INICIO TURNO ${currentTurnNumber} ---`);
+
+            requestAnimationFrame(() => {
+                const panelInforme = document.getElementById('turnReportPanel'); // Este es el "Informe"
+                let elementToScrollTo = null;
+                
+                if (gameInitialized && turnThatJustEnded >= 1) { 
+                    // Para los turnos 2 en adelante, buscamos el inicio del turno anterior.
+                    elementToScrollTo = document.getElementById(`inicio-turno-${turnThatJustEnded}`);
+                } else if (gameInitialized && currentTurnNumber === 1) { 
+                    // Para el primer turno (cuando currentTurnNumber es 1, turnThatJustEnded es 0),
+                    // buscamos el marcador de inicio de partida.
+                    elementToScrollTo = document.getElementById('inicio-partida-marker');
+                }
+                
+                if (panelInforme && elementToScrollTo) {
+                    // Desplaza el "Informe" para que la parte superior de 'elementToScrollTo'
+                    // se alinee con la parte superior del área visible de 'panelInforme'.
+                    // La animación suave es manejada por 'scroll-behavior: smooth;' en el CSS de #turnReportPanel.
+                    panelInforme.scrollTop = elementToScrollTo.offsetTop; 
+                } else if (panelInforme) {
+                    // Fallback: si no hay un elemento específico (improbable en el flujo normal),
+                    // scroll al final del "Informe".
+                    panelInforme.scrollTop = panelInforme.scrollHeight;
+                }
+            });
+
+            miNavio.haColisionadoEsteTurno = false;
+            navioObjetivo.haColisionadoEsteTurno = false;
+            miNavio.ordenesConfirmadas = false;
+            miNavio.ordenDisparoLista = false;
+            miNavio.ordenDisparo = null;
+            navioObjetivo.ordenesConfirmadas = false; 
+            navioObjetivo.ordenDisparoLista = false;
+            navioObjetivo.ordenDisparo = null;
+
+            if (!navioObjetivo.isSunk) { 
+                decidirMovimientoAI(navioObjetivo, miNavio);
+                decidirDisparoAI(navioObjetivo, miNavio);
+            }
+            navioObjetivo.ordenesConfirmadas = true; 
+
+            if (!windHasChangedThisGame) {
+                let chanceOfWindChange = 0;
+                if (currentTurnNumber >= 11 && currentTurnNumber <= 20) chanceOfWindChange = 1; 
+                else if (currentTurnNumber >= 21 && currentTurnNumber <= 25) chanceOfWindChange = 2; 
+                else if (currentTurnNumber >= 26 && currentTurnNumber <= 30) chanceOfWindChange = 3; 
+                else if (currentTurnNumber >= 31) chanceOfWindChange = 3 + (currentTurnNumber - 30); 
+                chanceOfWindChange = Math.min(chanceOfWindChange, 50); 
+                if (Math.random() * 100 < chanceOfWindChange) {
+                    cambiarVientoAleatoriamente();
+                    windHasChangedThisGame = true; 
+                }
+            }
+
+            actualizarInfoNavio();
+            actualizarInfoObjetivo();
+            actualizarEstadoBotonesComando();
+            actualizarEstadoBotonesDisparo();
+            actualizarEstadoBotonPasarTurno();
+            actualizarEstadoBotonPausa();
+            actualizarSombra(); 
+            actualizarMensajePrincipal(); 
+            dibujarTodo();
+
+            if (!miNavio.isSunk && !navioObjetivo.isSunk) { 
+                isPaused = false; 
+                actualizarEstadoBotonPausa();
+                iniciarCronometro(); 
+            } else { 
+                finalizarPartida();
+            }
+        }
+
+        function cambiarVientoAleatoriamente() { 
+            const tipoCambio = Math.floor(Math.random() * 3) + 1; 
+            let reporteCambio = "Cambio de viento: ";
+
+            let nuevaIntensidad = intensidadViento;
+            let nuevaDireccion = direccionVientoGrados;
+
+            if (tipoCambio === 1 || tipoCambio === 3) { 
+                const intensidadesPosibles = ["CALMA", "MEDIA", "FUERTE"];
+                const indiceActual = intensidadesPosibles.indexOf(intensidadViento);
+                if (indiceActual !== -1) { 
+                    intensidadesPosibles.splice(indiceActual, 1);
+                }
+                nuevaIntensidad = intensidadesPosibles[Math.floor(Math.random() * intensidadesPosibles.length)];
+                reporteCambio += `Intensidad a ${nuevaIntensidad}. `;
+            }
+
+            if (tipoCambio === 2 || tipoCambio === 3) { 
+                let dirAnterior = nuevaDireccion;
+                do { 
+                    nuevaDireccion = Math.floor(Math.random() * 8) * 45; 
+                } while (nuevaDireccion === dirAnterior && tipoCambio === 2);
+                reporteCambio += `Dirección a ${nuevaDireccion}°.`;
+            }
+
+            intensidadViento = nuevaIntensidad;
+            direccionVientoGrados = nuevaDireccion;
+
+            actualizarIndicadorVientoHTML(); 
+            agregarAlReporte(reporteCambio.trim());
+            mensajesPrioritariosTurno.push(`¡CAMBIO DE VIENTO! ${reporteCambio.trim()}`);
+        }
+
+        function actualizarIndicadorVientoHTML() { 
+            const windText = document.getElementById('wind-intensity-text');
+            if (windText) {
+                windText.textContent = intensidadViento.substring(0,3).toUpperCase(); 
+            }
+            if (!isAnimatingMovement) dibujarTodo(); 
+        }
+
+
+        function setupUIListeners() { 
+            elementoMensajePrincipal = document.getElementById('mensajePrincipal'); 
+            
+            document.getElementById('iniciarConfig').addEventListener('click', () => {
+                if (isAnimatingMovement) return; 
+                const nuevaDuracion = parseInt(document.getElementById('duracionTurnoInput').value);
+                if (nuevaDuracion && nuevaDuracion >= 10) {
+                    tiempoTotalTurnoSegundos = nuevaDuracion;
+                    miNavio.crewExperience = document.getElementById('playerCrewExperience').value;
+                    navioObjetivo.crewExperience = document.getElementById('aiCrewExperience').value;
+                    intensidadViento = document.getElementById('windIntensitySetting').value; 
+
+                    currentTurnNumber = 0; 
+                    windHasChangedThisGame = false;
+                    turnReportLog = [];
+                    mensajesPrioritariosTurno = [];
+                    agregarAlReporte(`--- INICIO PARTIDA ---`);
+                    
+                    [miNavio, navioObjetivo].forEach(nav => {
+                        nav.saludCasco = nav.maxSaludCasco;
+                        nav.tripulacionInicial = TRIPULACION_INICIAL_ESTANDAR; 
+                        nav.tripulacionOperativa = TRIPULACION_INICIAL_ESTANDAR;
+                        nav.saludMastilMayor = nav.maxSaludMastilMayor;
+                        nav.saludMastilTrinquete = nav.maxSaludMastilTrinquete;
+                        nav.saludMastilMesana = nav.maxSaludMastilMesana;
+                        nav.mastilMayorCaido = false;
+                        nav.mastilTrinqueteCaido = false;
+                        nav.mastilMesanaCaido = false;
+                        nav.canonesBaborOperativos = nav.maxCanonesPorBanda;
+                        nav.canonesEstriborOperativos = nav.maxCanonesPorBanda;
+                        nav.rudderDamaged = false;
+                        nav.eficienciaVelocidadActual = 1.0;
+                        nav.fatigaTripulacion = 0;
+                        nav.ordenDisparo = null;
+                        nav.ordenDisparoLista = false;
+                        nav.ordenesConfirmadas = false;
+                        nav.isSunk = false;
+                        nav.cascoDestruido = false;
+                        nav.haColisionadoEsteTurno = false; 
+                        nav.forzarSoloViraje = false; 
+                        nav.velamenActual = 'MV'; 
+                        nav.ordenVelamen = 'MV';
+                        nav.velamenEfectivoEnTurno = 'MV';
+                        nav.posicionTimonActualPuntos = 0;
+                        nav.posicionTimonAnteriorPuntos = 0;
+                        nav.ordenTimon = 0;
+                        nav.municionCargada = 'BALA_REDONDA';
+                        nav.municionParaSiguienteCarga = 'BALA_REDONDA';
+
+                        if (nav === miNavio) {
+                            nav.globalX = 300; nav.globalY = 300; nav.orientacionActualGrados = 0;
+                        } else { 
+                            nav.globalX = 700; nav.globalY = 200; nav.orientacionActualGrados = 180;
+                        }
+                        nav.startX = nav.globalX; nav.startY = nav.globalY; nav.startOrientacion = nav.orientacionActualGrados;
+                        nav.targetX = nav.globalX; nav.targetY = nav.globalY; nav.targetOrientacion = nav.orientacionActualGrados;
+                        nav.actualizarPuntosDeColision();
+                        nav.actualizarEficienciaVelocidad();
+                    });
+
+                    camaraX = miNavio.globalX; camaraY = miNavio.globalY; cameraManuallyMoved = false;
+                    isPaused = false; 
+                    gameInitialized = true;
+
+                    actualizarIndicadorVientoHTML(); 
+                    document.getElementById('confirmarOrdenesJugador').disabled = false;
+                    document.getElementById('iniciarConfig').disabled = true; 
+                    agregarAlReporte(`Configuración aplicada. Duración turno: ${tiempoTotalTurnoSegundos}s. Viento: ${intensidadViento}.`);
+                    actualizarMensajePrincipal();
+                                        
+                    iniciarNuevoTurno(); 
+                } else {
+                    if(elementoMensajePrincipal) elementoMensajePrincipal.textContent = "Duración de turno inválida (mín. 10s).";
+                }
+            });
+
+            document.querySelectorAll('#velamen-controls .cmd-button').forEach(button => {
+                button.addEventListener('click', (e) => {
+                    if (miNavio.ordenesConfirmadas || miNavio.isSunk || isAnimatingMovement) return;
+                    miNavio.ordenVelamen = e.target.dataset.velamen;
+                    actualizarEstadoBotonesComando();
+                    actualizarSombra(); 
+                });
+            });
+             document.querySelectorAll('#timon-controls .cmd-button').forEach(button => {
+                button.addEventListener('click', (e) => {
+                    if (miNavio.ordenesConfirmadas || miNavio.isSunk || isAnimatingMovement) return;
+                    const nuevaOrdenTimon = parseInt(e.target.dataset.timon);
+                    if (validarOrdenTimon(miNavio, nuevaOrdenTimon)) { 
+                        miNavio.ordenTimon = nuevaOrdenTimon;
+                        if(elementoMensajePrincipal && elementoMensajePrincipal.textContent.startsWith("Amplitud de timón") || elementoMensajePrincipal.textContent.startsWith("Cambio de timón")) elementoMensajePrincipal.textContent = ''; 
+                    }
+                    actualizarEstadoBotonesComando();
+                    actualizarSombra(); 
+                });
+            });
+
+            document.getElementById('confirmarOrdenesJugador').addEventListener('click', () => {
+                if (miNavio.ordenesConfirmadas || miNavio.isSunk || isAnimatingMovement) return;
+                miNavio.ordenesConfirmadas = true;
+                actualizarEstadoBotonesComando();
+                actualizarEstadoBotonesDisparo();
+                actualizarEstadoBotonPasarTurno();
+                actualizarInfoNavio(); 
+            });
+
+            document.getElementById('pasarTurno').addEventListener('click', () => {
+                 if (document.getElementById('pasarTurno').disabled || isAnimatingMovement || isPaused) return;
+                 resolverTurnoCompleto('boton_pasar_turno');
+            });
+
+            document.getElementById('pausaJuego').addEventListener('click', () => {
+                if (isAnimatingMovement || (miNavio && miNavio.isSunk) || (navioObjetivo && navioObjetivo.isSunk)) return; 
+
+                isPaused = !isPaused;
+                if (isPaused) {
+                    if (intervaloCronometro) clearInterval(intervaloCronometro); 
+                    agregarAlReporte("Juego Pausado.");
+                } else {
+                    iniciarIntervaloCronometro(); 
+                    agregarAlReporte("Juego Reanudado.");
+                }
+                actualizarEstadoBotonPausa();
+                actualizarEstadoBotonPasarTurno(); 
+            });
+
+            document.getElementById('municionSelect').addEventListener('change', (e) => {
+                if (miNavio.ordenesConfirmadas || miNavio.isSunk || isAnimatingMovement) return;
+                miNavio.municionParaSiguienteCarga = e.target.value;
+                agregarAlReporte(`${miNavio.nombre} seleccionó ${miNavio.municionParaSiguienteCarga.replace('_',' ').toLowerCase()} para cargar en el próximo turno.`);
+                actualizarInfoNavio();
+            });
+
+
+            document.getElementById('dispararBabor').addEventListener('click', () => {
+                if (miNavio.ordenesConfirmadas || miNavio.isSunk || isAnimatingMovement) return;
+                miNavio.ordenDisparo = {
+                    banda: 'BABOR',
+                    apuntarA: document.getElementById('apuntarA').value,
+                    seccion: document.getElementById('seccionBanda').value
+                };
+                miNavio.ordenDisparoLista = true;
+                actualizarEstadoBotonesDisparo();
+            });
+            document.getElementById('dispararEstribor').addEventListener('click', () => {
+                if (miNavio.ordenesConfirmadas || miNavio.isSunk || isAnimatingMovement) return;
+                miNavio.ordenDisparo = {
+                    banda: 'ESTRIBOR',
+                    apuntarA: document.getElementById('apuntarA').value,
+                    seccion: document.getElementById('seccionBanda').value
+                };
+                miNavio.ordenDisparoLista = true;
+                actualizarEstadoBotonesDisparo();
+            });
+            document.getElementById('cancelarDisparo').addEventListener('click', () => {
+                if (miNavio.ordenesConfirmadas || miNavio.isSunk || isAnimatingMovement) return;
+                miNavio.ordenDisparo = null;
+                miNavio.ordenDisparoLista = false;
+                actualizarEstadoBotonesDisparo();
+            });
+
+            window.addEventListener('keydown', (event) => {
+                if (!miNavio || ['INPUT', 'SELECT', 'TEXTAREA'].includes(event.target.tagName) || isAnimatingMovement) { 
+                    return;
+                }
+
+                const key = event.key.toLowerCase();
+
+                if (miNavio.isSunk && key !== 'q' && key !== 'e') return; 
+
+                let ordenesCambiadas = false;
+
+                if (!miNavio.ordenesConfirmadas) { 
+                    if (key === 'w') { 
+                        const currentIndex = VELAMEN_ORDER.indexOf(miNavio.ordenVelamen);
+                        if (currentIndex < VELAMEN_ORDER.length - 1) {
+                            const nextVelamen = VELAMEN_ORDER[currentIndex + 1];
+                             if (!((miNavio.velamenActual === 'NV' && nextVelamen === 'TV') || (miNavio.velamenActual === 'TV' && nextVelamen === 'NV'))) { 
+                                miNavio.ordenVelamen = nextVelamen;
+                                ordenesCambiadas = true;
+                            }
+                        }
+                    } else if (key === 's') { 
+                        const currentIndex = VELAMEN_ORDER.indexOf(miNavio.ordenVelamen);
+                        if (currentIndex > 0) {
+                             const prevVelamen = VELAMEN_ORDER[currentIndex - 1];
+                             if (!((miNavio.velamenActual === 'NV' && prevVelamen === 'TV') || (miNavio.velamenActual === 'TV' && prevVelamen === 'NV'))) { 
+                                miNavio.ordenVelamen = prevVelamen;
+                                ordenesCambiadas = true;
+                            }
+                        }
+                    } else if (key === 'd') { 
+                        const nuevaOrdenTimon = Math.min(miNavio.ordenTimon + 1, 4);
+                        if (validarOrdenTimon(miNavio, nuevaOrdenTimon)) {
+                            miNavio.ordenTimon = nuevaOrdenTimon;
+                            if(elementoMensajePrincipal && (elementoMensajePrincipal.textContent.startsWith("Amplitud de timón") || elementoMensajePrincipal.textContent.startsWith("Cambio de timón"))) elementoMensajePrincipal.textContent = '';
+                            ordenesCambiadas = true;
+                        }
+                    } else if (key === 'a') { 
+                        const nuevaOrdenTimon = Math.max(miNavio.ordenTimon - 1, -4);
+                        if (validarOrdenTimon(miNavio, nuevaOrdenTimon)) {
+                            miNavio.ordenTimon = nuevaOrdenTimon;
+                             if(elementoMensajePrincipal && (elementoMensajePrincipal.textContent.startsWith("Amplitud de timón") || elementoMensajePrincipal.textContent.startsWith("Cambio de timón"))) elementoMensajePrincipal.textContent = '';
+                            ordenesCambiadas = true;
+                        }
+                    }
+                }
+
+                if (key === 'q') {
+                    if(miNavio.isSunk) return;
+                    miNavio.ordenesConfirmadas = !miNavio.ordenesConfirmadas;
+                    actualizarEstadoBotonesComando();
+                    actualizarEstadoBotonesDisparo();
+                    actualizarEstadoBotonPasarTurno();
+                    actualizarInfoNavio();
+                    ordenesCambiadas = true; 
+                } else if (key === 'e') { 
+                    const pasarTurnoBtn = document.getElementById('pasarTurno');
+                    if (!pasarTurnoBtn.disabled) { 
+                        resolverTurnoCompleto('tecla_pasar_turno');
+                    }
+                } else if (key === 'p') { 
+                    document.getElementById('pausaJuego').click(); 
+                }
+
+
+                if (ordenesCambiadas) { 
+                    actualizarEstadoBotonesComando(); 
+                    actualizarSombra(); 
+                } else if (key === 'q') { 
+                    if(!isAnimatingMovement) dibujarTodo();
+                }
+
+                if (['w', 's', 'a', 'd', 'q', 'e', 'p'].includes(key)) {
+                    event.preventDefault();
+                }
+            });
+
+
+            canvas.addEventListener('mousemove', actualizarDistanciaAObjetivo);
+            canvas.addEventListener('contextmenu', (e) => e.preventDefault()); 
+            canvas.addEventListener('mousedown', (e) => {
+                if (e.button === 2) { 
+                    isPanning = true;
+                    lastPanX = e.clientX;
+                    lastPanY = e.clientY;
+                    canvas.style.cursor = 'grabbing';
+                    e.preventDefault();
+                }
+            });
+            window.addEventListener('mousemove', (e) => { 
+                if (isPanning) {
+                    const dx = e.clientX - lastPanX;
+                    const dy = e.clientY - lastPanY;
+                    camaraX -= dx; 
+                    camaraY -= dy;
+                    cameraManuallyMoved = true; 
+                    dibujarTodo();
+                }
+            });
+            window.addEventListener('mouseup', (e) => { 
+                if (e.button === 2 && isPanning) {
+                    isPanning = false;
+                    canvas.style.cursor = 'grab';
+                }
+            });
+        }
+
+        function ajustarCanvas() { 
+            const mainContent = document.querySelector('.main-content');
+            if (!mainContent || !canvas) {
+                return;
+            }
+            canvas.width = mainContent.clientWidth;
+            canvas.height = mainContent.clientHeight;
+            if (miNavio && !cameraManuallyMoved) { 
+                camaraX = miNavio.globalX;
+                camaraY = miNavio.globalY;
+            }
+            dibujarTodo();
+        }
+
+        window.onload = () => { 
+            try {
+                canvas = document.getElementById('gameCanvas');
+                ctx = canvas.getContext('2d');
+                elementoMensajePrincipal = document.getElementById('mensajePrincipal'); 
+
+                miNavio = new Navio("Sovereign of the Seas", 300, 300, 0);
+                navioSombra = new Navio("Sombra", 300, 300, 0, true); 
+                navioSombra.visible = true;
+                navioObjetivo = new Navio("Couronne", 700, 200, 180, false, true); 
+
+                camaraX = miNavio.globalX;
+                camaraY = miNavio.globalY;
+
+                miNavio.ordenVelamen = miNavio.velamenActual;
+                miNavio.ordenTimon = miNavio.posicionTimonActualPuntos;
+
+                setupUIListeners(); 
+
+                actualizarInfoNavio();
+                actualizarInfoObjetivo();
+                actualizarEstadoBotonesComando();
+                actualizarEstadoBotonesDisparo();
+                actualizarEstadoBotonPasarTurno();
+                actualizarEstadoBotonPausa();
+                actualizarSombra(); 
+                actualizarDisplayCronometro(); 
+                document.getElementById('pasarTurno').disabled = true; 
+                document.getElementById('confirmarOrdenesJugador').disabled = true; 
+                document.getElementById('iniciarConfig').disabled = false; 
+                turnReportLog = []; 
+                mensajesPrioritariosTurno = [];
+                // Mensaje inicial modificado para mayor claridad
+                agregarAlReporte("Simulador listo. Dirígete a 'Configuración Partida' (al final de esta columna) para iniciar.");
+                actualizarMensajePrincipal();
+
+
+                ajustarCanvas(); 
+                window.addEventListener('resize', ajustarCanvas); 
+                actualizarIndicadorVientoHTML(); 
+            } catch (error) {
+                console.error("Error durante la inicialización (window.onload):", error);
+                if(elementoMensajePrincipal) elementoMensajePrincipal.textContent = "Error al iniciar. Revise la consola.";
+            }
+        };
+    </script>
+</body>
+</html>

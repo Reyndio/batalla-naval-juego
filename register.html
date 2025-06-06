@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Registro - Batalla Naval</title>
+    <style>
+        body{font-family: sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; flex-direction: column; background-color: #1a202c; color: #e2e8f0;} input, button {padding: 10px; margin: 5px; border-radius: 5px; border: 1px solid #4a5568; background-color: #2d3748; color: white;} button {cursor: pointer; background-color: #3182ce;} #message {margin-top: 15px;} a {color: #63b3ed;}
+    </style>
+</head>
+<body>
+    <h2>Crear Cuenta</h2>
+    <input type="text" id="username" placeholder="Usuario" required>
+    <input type="password" id="password" placeholder="Contraseña" required>
+    <button id="registerBtn">Registrar</button>
+    <p>¿Ya tienes cuenta? <a href="/login.html">Inicia sesión</a></p>
+    <div id="message"></div>
+    <script>
+        document.getElementById('registerBtn').addEventListener('click', async () => {
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            const messageDiv = document.getElementById('message');
+            messageDiv.textContent = '';
+
+            const response = await fetch('/api/register', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username, password })
+            });
+            const data = await response.json();
+            messageDiv.textContent = data.message;
+            if (response.ok) {
+                messageDiv.style.color = '#68d391';
+                setTimeout(() => window.location.href = '/login.html', 2000);
+            } else {
+                messageDiv.style.color = '#f56565';
+            }
+        });
+    </script>
+</body>
+</html>

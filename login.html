@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Login - Batalla Naval</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            flex-direction: column;
+            background-color: #1a202c;
+            color: #e2e8f0;
+        }
+
+        input,
+        button {
+            padding: 10px;
+            margin: 5px;
+            border-radius: 5px;
+            border: 1px solid #4a5568;
+            background-color: #2d3748;
+            color: white;
+        }
+
+        button {
+            cursor: pointer;
+            background-color: #3182ce;
+        }
+
+        #message {
+            margin-top: 15px;
+            color: #f56565;
+        }
+    </style>
+</head>
+
+<body>
+    <h2>Iniciar Sesión</h2>
+
+    <input type="text" id="username" placeholder="Usuario" required>
+    <input type="password" id="password" placeholder="Contraseña" required>
+
+    <button id="loginBtn">Entrar</button>
+
+    <p>¿No tienes cuenta? <a href="/register.html">Regístrate aquí</a></p>
+
+    <div id="message"></div>
+
+    <script>
+        document.getElementById('loginBtn').addEventListener('click', async () => {
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            const messageDiv = document.getElementById('message');
+
+            const response = await fetch('/api/login', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    username,
+                    password
+                })
+            });
+
+            const data = await response.json();
+
+            if (response.ok) {
+                // Guardamos una "bandera" para saber que el usuario inició sesión
+                localStorage.setItem('isLoggedIn', 'true');
+                // Redirigimos al juego
+                window.location.href = '/index.html';
+            } else {
+                messageDiv.textContent = data.message;
+            }
+        });
+    </script>
+
+    </body>
+
+</html>
