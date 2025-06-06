@@ -1,14 +1,14 @@
-<!DOCTYPE html>
+ <!DOCTYPE html>
 <html lang="es">
 <head>
 <script>
     if (localStorage.getItem('isLoggedIn') !== 'true') {
         window.location.href = '/login.html';
     }
-</script>
+</script>  
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Simulador de Batalla Naval (MVP v1.55 - Mensaje Inicial Mejorado)</title>
+    <title>Simulador de Batalla Naval (v1.56 - Corrección de Cámara)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         body {
@@ -412,6 +412,7 @@
         <div class="footer-status">
             <div id="cronometroTurno">Tiempo: --:--</div>
             <p id="mensajePrincipal" class="text-lg font-semibold text-gray-400 text-center flex-grow mx-4"></p>
+            <button id="resetCamera" class="px-4 py-2">Centrar Cámara</button>
             <button id="pausaJuego" class="px-4 py-2">Pausar</button>
             <button id="confirmarOrdenesJugador" class="px-4 py-2 bg-green-600 hover:bg-green-700">Confirmar Órdenes</button>
             <button id="pasarTurno" class="px-6 py-2">Pasar Turno</button>
@@ -2617,6 +2618,16 @@
             if (!isAnimatingMovement) dibujarTodo(); 
         }
 
+        function resetCameraFocus() {
+            if (!miNavio) return;
+            cameraManuallyMoved = false;
+            camaraX = miNavio.globalX;
+            camaraY = miNavio.globalY;
+            agregarAlReporte("Cámara centrada en el navío.");
+            if (!isAnimatingMovement) {
+                dibujarTodo();
+            }
+        }
 
         function setupUIListeners() { 
             elementoMensajePrincipal = document.getElementById('mensajePrincipal'); 
@@ -2728,6 +2739,8 @@
                  if (document.getElementById('pasarTurno').disabled || isAnimatingMovement || isPaused) return;
                  resolverTurnoCompleto('boton_pasar_turno');
             });
+            
+            document.getElementById('resetCamera').addEventListener('click', resetCameraFocus);
 
             document.getElementById('pausaJuego').addEventListener('click', () => {
                 if (isAnimatingMovement || (miNavio && miNavio.isSunk) || (navioObjetivo && navioObjetivo.isSunk)) return; 
@@ -2786,7 +2799,7 @@
 
                 const key = event.key.toLowerCase();
 
-                if (miNavio.isSunk && key !== 'q' && key !== 'e') return; 
+                if (miNavio.isSunk && key !== 'q' && key !== 'e' && key !== 'c') return; 
 
                 let ordenesCambiadas = false;
 
@@ -2841,6 +2854,8 @@
                     }
                 } else if (key === 'p') { 
                     document.getElementById('pausaJuego').click(); 
+                } else if (key === 'c') {
+                    resetCameraFocus();
                 }
 
 
@@ -2851,7 +2866,7 @@
                     if(!isAnimatingMovement) dibujarTodo();
                 }
 
-                if (['w', 's', 'a', 'd', 'q', 'e', 'p'].includes(key)) {
+                if (['w', 's', 'a', 'd', 'q', 'e', 'p', 'c'].includes(key)) {
                     event.preventDefault();
                 }
             });
@@ -2875,6 +2890,8 @@
                     camaraX -= dx; 
                     camaraY -= dy;
                     cameraManuallyMoved = true; 
+                    lastPanX = e.clientX; // <-- CORRECCIÓN: Actualizar la última posición
+                    lastPanY = e.clientY; // <-- CORRECCIÓN: Actualizar la última posición
                     dibujarTodo();
                 }
             });
@@ -2932,7 +2949,6 @@
                 document.getElementById('iniciarConfig').disabled = false; 
                 turnReportLog = []; 
                 mensajesPrioritariosTurno = [];
-                // Mensaje inicial modificado para mayor claridad
                 agregarAlReporte("Simulador listo. Dirígete a 'Configuración Partida' (al final de esta columna) para iniciar.");
                 actualizarMensajePrincipal();
 
