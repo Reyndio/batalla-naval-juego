@@ -25,69 +25,32 @@
       gap: 8px;
       padding: 8px;
     }
-    header {
-      grid-area: header;
-      background: var(--panel);
-      border-radius: 8px;
-      padding: 8px 10px;
-      display: flex;
-      gap: 12px;
-      align-items: center;
-      flex-wrap: wrap;
-      box-shadow: 0 4px 8px rgba(0,0,0,.25);
-    }
+    header { grid-area: header; background: var(--panel); border-radius: 8px; padding: 8px 10px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap; box-shadow: 0 4px 8px rgba(0,0,0,.25); }
     header h1 { font-size: 17px; color: #90cdf4; margin: 0 10px 0 0; }
     .top-status { margin-left: auto; display: flex; gap: 6px; flex-wrap: wrap; }
     .pill { background: #1a202c; border: 1px solid #4a5568; border-radius: 999px; padding: 4px 8px; font-size: 12px; }
-    .panel {
-      background: var(--panel);
-      border-radius: 8px;
-      box-shadow: 0 4px 8px rgba(0,0,0,.25);
-      overflow: auto;
-      padding: 10px;
-      min-height: 0;
-    }
+    .clock-pill { color: #f6e05e; font-size: 15px; font-weight: 800; min-width: 112px; text-align: center; }
+    .panel { background: var(--panel); border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,.25); overflow: auto; padding: 10px; min-height: 0; }
     #leftPanel { grid-area: left; }
     #rightPanel { grid-area: right; }
-    #canvasWrap {
-      grid-area: main;
-      min-width: 0;
-      min-height: 0;
-      position: relative;
-      overflow: hidden;
-      background: #003366;
-      border-radius: 8px;
-      border: 1px solid #718096;
-    }
+    #canvasWrap { grid-area: main; min-width: 0; min-height: 0; position: relative; overflow: hidden; background: #003366; border-radius: 8px; border: 1px solid #718096; }
     canvas { width: 100%; height: 100%; display: block; background: #003366; cursor: grab; }
     canvas.panning { cursor: grabbing; }
-    footer {
-      grid-area: footer;
-      background: var(--panel);
-      border-radius: 8px;
-      padding: 7px 10px;
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      min-height: 42px;
-    }
+    footer { grid-area: footer; background: var(--panel); border-radius: 8px; padding: 7px 10px; display: flex; align-items: center; gap: 12px; min-height: 46px; }
     #mainMessage { flex: 1; text-align: center; font-weight: 600; }
     h2, h3 { color: #90cdf4; }
     h2 { font-size: 16px; margin: 0 0 8px; }
     h3 { font-size: 14px; margin: 11px 0 6px; }
     label { color: var(--muted); font-weight: 600; font-size: 12px; display: block; margin: 7px 0 4px; }
-    select, button {
-      background: #1a202c;
-      color: #e2e8f0;
-      border: 1px solid var(--line);
-      border-radius: 6px;
-      padding: 7px 8px;
-      font-size: 13px;
-    }
+    select, button, input[type="number"] { background: #1a202c; color: #e2e8f0; border: 1px solid var(--line); border-radius: 6px; padding: 7px 8px; font-size: 13px; }
     button { cursor: pointer; font-weight: 700; }
     button:hover:not(:disabled) { border-color: var(--blue2); background: #243447; }
-    button:disabled { opacity: .45; cursor: not-allowed; }
-    select { width: 100%; }
+    button:disabled, input:disabled, select:disabled { opacity: .45; cursor: not-allowed; }
+    select, input[type="number"] { width: 100%; }
+    .prebattle-config { background: #1e293b; border: 1px solid #718096; border-radius: 7px; padding: 9px; margin-bottom: 10px; }
+    .prebattle-config.locked { opacity: .55; }
+    .start-button { width: 100%; margin-top: 9px; background: #2f855a; border-color: #68d391; font-size: 14px; }
+    #pauseBattle { min-width: 104px; }
     .cmd-row { display: flex; gap: 4px; flex-wrap: wrap; align-items: center; }
     .cmd-row button { flex: 1 1 auto; min-width: 34px; }
     .cmd-button.current { background: var(--blue); border-color: var(--blue2); color: white; }
@@ -102,47 +65,16 @@
     .resolve { background: #8a5d13; }
     .danger { background: #742a2a; }
     .small { font-size: 11px; color: #a9bbcc; line-height: 1.4; }
-    .legend-box {
-      position: absolute;
-      left: 10px;
-      top: 10px;
-      z-index: 4;
-      background: rgba(15,23,32,.86);
-      border: 1px solid rgba(160,174,192,.55);
-      border-radius: 6px;
-      padding: 7px 9px;
-      font-size: 11px;
-      pointer-events: none;
-      max-width: 340px;
-    }
-    #tacticalOverlay {
-      position: absolute;
-      left: 10px;
-      bottom: 10px;
-      z-index: 4;
-      background: rgba(15,23,32,.88);
-      border: 1px solid rgba(160,174,192,.55);
-      border-radius: 6px;
-      padding: 7px 9px;
-      font-size: 12px;
-      pointer-events: none;
-      min-width: 240px;
-    }
-    #cameraTools {
-      position: absolute;
-      right: 10px;
-      top: 10px;
-      z-index: 5;
-      display: grid;
-      grid-template-columns: repeat(2, auto);
-      gap: 4px;
-    }
+    .legend-box { position: absolute; left: 10px; top: 10px; z-index: 4; background: rgba(15,23,32,.86); border: 1px solid rgba(160,174,192,.55); border-radius: 6px; padding: 7px 9px; font-size: 11px; pointer-events: none; max-width: 340px; }
+    #tacticalOverlay { position: absolute; left: 10px; bottom: 10px; z-index: 4; background: rgba(15,23,32,.88); border: 1px solid rgba(160,174,192,.55); border-radius: 6px; padding: 7px 9px; font-size: 12px; pointer-events: none; min-width: 240px; }
+    #cameraTools { position: absolute; right: 10px; top: 10px; z-index: 5; display: grid; grid-template-columns: repeat(2, auto); gap: 4px; }
     #cameraTools button { padding: 6px 8px; font-size: 11px; background: rgba(15,23,32,.9); }
     .ship-card { background: #1a202c; border: 1px solid #4a5568; border-radius: 7px; padding: 8px; margin-bottom: 7px; }
     .ship-card.selected { border-color: #f6e05e; box-shadow: 0 0 0 1px #f6e05e inset; }
     .ship-card.sunk { opacity: .5; }
     .ship-title { display: flex; justify-content: space-between; gap: 8px; font-weight: 700; }
-    .info-line { display: flex; justify-content: space-between; gap: 8px; font-size: 12px; margin-top: 3px; }
+    .info-line { display: flex; justify-content: space-between; gap: 8px; font-size: 11px; margin-top: 3px; }
+    .info-line span:last-child { text-align: right; }
     .bar { height: 5px; background: #4a5568; overflow: hidden; border-radius: 999px; margin-top: 2px; }
     .bar > span { display:block; height:100%; background:#63b3ed; }
     #ordersSummary { background: #1a202c; border-radius: 6px; padding: 7px; border: 1px solid #4a5568; }
@@ -158,6 +90,6 @@
     @media (max-width: 1200px) {
       #app { grid-template-columns: 320px minmax(480px,1fr); grid-template-areas: "header header" "left main" "right right" "footer footer"; overflow: auto; }
       body { overflow: auto; }
-      #rightPanel { max-height: 420px; }
+      #rightPanel { max-height: 480px; }
       #canvasWrap { min-height: 640px; }
     }
