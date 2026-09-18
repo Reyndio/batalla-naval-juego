@@ -3,331 +3,134 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="pilot-data" content="data/historical_ships_1805.json" />
   <title>Simulador Naval Histórico — Piloto 2v2</title>
-  <style>
-    :root { color-scheme: dark; font-family: Inter, system-ui, sans-serif; }
-    * { box-sizing: border-box; }
-    body { margin: 0; background: #10151d; color: #e8eef7; }
-    #app { min-height: 100vh; display: grid; grid-template-columns: 330px 1fr 330px; grid-template-rows: auto 1fr; gap: 10px; padding: 10px; }
-    header { grid-column: 1 / -1; background: #1a2430; border: 1px solid #2d4155; border-radius: 10px; padding: 10px 14px; display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
-    h1 { font-size: 18px; margin: 0; }
-    .muted { color: #9db0c4; font-size: 12px; }
-    .panel { background: #17212c; border: 1px solid #2d4155; border-radius: 10px; padding: 12px; overflow: auto; }
-    .panel h2 { font-size: 15px; margin: 0 0 10px; }
-    .panel h3 { font-size: 13px; margin: 12px 0 6px; color: #b9d7f2; }
-    label { display: block; font-size: 12px; color: #a9bbcc; margin: 8px 0 4px; }
-    select, button { width: 100%; border: 1px solid #3d5368; border-radius: 7px; background: #0f1720; color: #edf5ff; padding: 8px; }
-    button { cursor: pointer; font-weight: 650; }
-    button:hover:not(:disabled) { background: #1f3142; }
-    button:disabled { opacity: .5; cursor: not-allowed; }
-    .row { display: grid; grid-template-columns: repeat(2, 1fr); gap: 7px; }
-    .rudder { display: grid; grid-template-columns: repeat(5, 1fr); gap: 5px; }
-    .rudder button { padding: 8px 2px; }
-    .rudder button.active { outline: 2px solid #f3c969; }
-    .ship-card { border: 1px solid #33485d; background: #111a23; border-radius: 8px; padding: 8px; margin-bottom: 7px; }
-    .ship-card.active { border-color: #e9c46a; box-shadow: 0 0 0 1px #e9c46a inset; }
-    .ship-card.sunk { opacity: .45; }
-    .ship-name { font-weight: 700; display: flex; justify-content: space-between; gap: 6px; }
-    .stat { display: flex; justify-content: space-between; font-size: 12px; margin-top: 3px; }
-    .bar { height: 6px; background: #263545; border-radius: 99px; overflow: hidden; margin-top: 3px; }
-    .bar > span { display: block; height: 100%; background: #6ab0de; }
-    #canvasWrap { position: relative; min-width: 0; min-height: 0; background: #0a2940; border-radius: 10px; overflow: hidden; border: 1px solid #2d4155; }
-    canvas { width: 100%; height: 100%; min-height: 620px; display: block; background: linear-gradient(#0a3957, #082b44); }
-    #legend { position: absolute; left: 12px; top: 12px; background: rgba(7,16,25,.82); border: 1px solid rgba(160,190,220,.3); padding: 8px 10px; border-radius: 7px; font-size: 12px; }
-    #log { height: 260px; overflow: auto; background: #0c141c; border-radius: 7px; padding: 8px; font-family: ui-monospace, monospace; font-size: 11px; white-space: pre-wrap; }
-    .warning { background: #2b2413; border: 1px solid #7b6630; padding: 8px; border-radius: 7px; font-size: 11px; color: #ecdca3; }
-    .success { color: #9ae6b4; font-weight: 700; }
-    .danger { color: #feb2b2; font-weight: 700; }
-    .tiny { font-size: 11px; color: #91a5b9; line-height: 1.4; }
-    .pill { display: inline-block; font-size: 11px; padding: 3px 7px; border-radius: 99px; background: #223243; }
-    @media (max-width: 1100px) {
-      #app { grid-template-columns: 280px 1fr; }
-      #rightPanel { grid-column: 1 / -1; max-height: none; }
-    }
-  </style>
+  <link rel="stylesheet" href="pilot-2v2.css" />
 </head>
 <body>
 <div id="app">
   <header>
-    <div>
-      <h1>Simulador Naval Histórico — Piloto 2v2</h1>
-      <div class="muted">Royal Navy: HMS Bellerophon + HMS Conqueror · Real Armada: Montañés + Bahama · configuraciones de octubre de 1805</div>
-    </div>
-    <div>
+    <h1>Simulador Naval Histórico — Piloto 2v2</h1>
+    <div class="small">HMS Bellerophon + HMS Conqueror vs Montañés + Bahama · octubre de 1805</div>
+    <div class="top-status">
       <span class="pill" id="turnPill">Turno 1</span>
       <span class="pill" id="windPill">Viento N · MEDIA</span>
       <span class="pill" id="resultPill">En combate</span>
     </div>
   </header>
 
-  <aside class="panel">
-    <h2>Órdenes Royal Navy</h2>
-    <div class="warning">Vertical slice de desarrollo. Los datos de buques son históricos y trazables; navegación, HP y fórmula de daño son mecánicas provisionales comunes a los cuatro 74. Carronadas y obuses se registran, pero aún no se equiparan en la fórmula de daño.</div>
+  <aside class="panel" id="leftPanel">
+    <h2>Órdenes del buque seleccionado</h2>
+    <div class="warning">Se restaura la interacción del prototipo: silueta de navío, velamen visible, sombra de movimiento, timón ±4, banda de tiro, sección, munición, teclado y cámara desplazable. La física sigue siendo provisional hasta el nuevo motor histórico.</div>
 
-    <label for="shipSelect">Buque controlado</label>
+    <label for="shipSelect">Buque Royal Navy</label>
     <select id="shipSelect"></select>
+
+    <label>Velamen — azul = actual · amarillo = orden</label>
+    <div class="cmd-row" id="sailButtons">
+      <button class="cmd-button" data-sail="NV">NV</button>
+      <button class="cmd-button" data-sail="PV">PV</button>
+      <button class="cmd-button" data-sail="MV">MV</button>
+      <button class="cmd-button" data-sail="TV">TV</button>
+    </div>
+    <div class="sail-explain"><span>Sin vela</span><span>Poca vela</span><span>Media vela</span><span>Toda vela</span></div>
+    <select id="sailSelect" class="legacy-hidden" aria-hidden="true"><option>NV</option><option>PV</option><option>MV</option><option>TV</option></select>
+
+    <label>Timón — T◀ / T▶ = máximo</label>
+    <div class="cmd-row" id="rudderButtons">
+      <button class="cmd-button" data-rudder="-4">T◀</button>
+      <button class="cmd-button" data-rudder="-3">-3</button>
+      <button class="cmd-button" data-rudder="-2">-2</button>
+      <button class="cmd-button" data-rudder="-1">-1</button>
+      <button class="cmd-button" data-rudder="0">●</button>
+      <button class="cmd-button" data-rudder="1">+1</button>
+      <button class="cmd-button" data-rudder="2">+2</button>
+      <button class="cmd-button" data-rudder="3">+3</button>
+      <button class="cmd-button" data-rudder="4">T▶</button>
+    </div>
 
     <label for="targetSelect">Objetivo</label>
     <select id="targetSelect"></select>
 
-    <div class="row">
-      <div>
-        <label for="sailSelect">Velamen</label>
-        <select id="sailSelect">
-          <option value="NV">NV — sin vela</option>
-          <option value="PV">PV — poca vela</option>
-          <option value="MV" selected>MV — media vela</option>
-          <option value="TV">TV — toda vela</option>
-        </select>
-      </div>
+    <div class="two-col">
       <div>
         <label for="aimSelect">Apuntar</label>
-        <select id="aimSelect">
-          <option value="HULL">Casco</option>
-          <option value="RIGGING">Aparejo</option>
+        <select id="aimSelect"><option value="HULL">Casco</option><option value="RIGGING">Aparejo</option></select>
+      </div>
+      <div>
+        <label for="fireSectionSelect">Sección</label>
+        <select id="fireSectionSelect">
+          <option value="AUTO">Automática</option>
+          <option value="COMPLETA">Completa</option>
+          <option value="PROA">Media proa</option>
+          <option value="POPA">Media popa</option>
         </select>
       </div>
     </div>
 
-    <label>Timón</label>
-    <div class="rudder" id="rudderButtons">
-      <button data-rudder="-2">-2</button><button data-rudder="-1">-1</button><button data-rudder="0">0</button><button data-rudder="1">+1</button><button data-rudder="2">+2</button>
+    <label for="ammoSelect">Munición</label>
+    <select id="ammoSelect">
+      <option value="ROUND_SHOT">Bala redonda</option>
+      <option value="GRAPE">Metralla</option>
+      <option value="DOUBLE_SHOT">Doble bala</option>
+    </select>
+
+    <label>Disparo este turno</label>
+    <div class="cmd-row fire-row" id="fireButtons">
+      <button id="firePort" data-band="BABOR">Babor</button>
+      <button id="fireStarboard" data-band="ESTRIBOR">Estribor</button>
+      <button id="cancelFire" class="danger">X cancelar</button>
     </div>
+    <select id="fireSelect" class="legacy-hidden" aria-hidden="true"><option value="yes">Sí</option><option value="no">No</option></select>
 
-    <label for="fireSelect">Disparo este turno</label>
-    <select id="fireSelect"><option value="yes">Sí, si hay arco y alcance</option><option value="no">No</option></select>
-
-    <button id="saveOrder" style="margin-top:10px">Guardar órdenes de este buque</button>
-    <button id="resolveTurn" style="margin-top:8px;background:#8a5d13">Resolver turno simultáneo</button>
-    <button id="resetBattle" style="margin-top:8px">Reiniciar batalla</button>
+    <div class="action-row">
+      <button id="confirmOrder" class="confirm">Confirmar órdenes (Q)</button>
+      <button id="centerSelected" class="primary">Centrar buque (C)</button>
+    </div>
+    <button id="saveOrder" class="legacy-hidden" aria-hidden="true">Guardar órdenes de este buque</button>
+    <button id="resolveTurn" class="resolve" style="width:100%;margin-top:7px">Resolver turno simultáneo (E)</button>
+    <button id="resetBattle" style="width:100%;margin-top:7px">Reiniciar batalla</button>
 
     <h3>Estado de órdenes</h3>
-    <div id="ordersSummary" class="tiny"></div>
+    <div id="ordersSummary" class="small"></div>
+
+    <div class="key-help small">
+      <strong>Teclado:</strong> W/S velamen · A/D timón · Q confirmar · E resolver · C centrar · Tab cambiar buque.<br>
+      <strong>Mapa:</strong> botón derecho + arrastrar desplaza la cámara · rueda hace zoom · click azul selecciona · click rojo fija objetivo.
+    </div>
   </aside>
 
   <main id="canvasWrap">
-    <canvas id="battleCanvas" width="1000" height="700"></canvas>
-    <div id="legend">Azul: Royal Navy · Rojo: Real Armada<br>Click en buque azul: seleccionar · click en rojo: fijar objetivo</div>
+    <canvas id="battleCanvas"></canvas>
+    <div class="legend-box">
+      <strong>Lectura del mapa</strong><br>
+      Casco marrón/rojo = buque · velas blancas = velamen actual · silueta gris = posición prevista con la orden · sectores azules = arcos de tiro del buque seleccionado.
+    </div>
+    <div id="cameraTools">
+      <button id="fitFleet">Vista general</button>
+      <button id="resetCamera">Centrar seleccionado</button>
+      <button id="zoomIn">Zoom +</button>
+      <button id="zoomOut">Zoom −</button>
+    </div>
+    <div id="tacticalOverlay">Mueve el cursor sobre un buque para información táctica.</div>
   </main>
 
   <aside class="panel" id="rightPanel">
     <h2>Estado de fuerzas</h2>
     <div id="forceStatus"></div>
     <h3>Ficha del buque seleccionado</h3>
-    <div id="historicalCard" class="tiny"></div>
+    <div id="historicalCard" class="small"></div>
     <h3>Informe</h3>
     <div id="log"></div>
   </aside>
+
+  <footer>
+    <span class="pill" id="selectedPill">Seleccionado: —</span>
+    <div id="mainMessage">Da órdenes a ambos navíos británicos y confírmalas antes de resolver.</div>
+  </footer>
 </div>
+
 <script src="src/pilot2v2-core.js"></script>
-<script>
-(async function () {
-  const Core = window.Pilot2v2Core;
-  const canvas = document.getElementById('battleCanvas');
-  const ctx = canvas.getContext('2d');
-  let data;
-  let state;
-  let selectedShipId = null;
-  let rng = Core.seededRng(Date.now() & 0xffffffff);
-
-  async function loadData() {
-    const res = await fetch('data/historical_ships_1805.json');
-    if (!res.ok) throw new Error('No se pudo cargar data/historical_ships_1805.json');
-    return res.json();
-  }
-
-  function shipById(id) { return state.ships.find(s => s.id === id); }
-  function selectedShip() { return shipById(selectedShipId); }
-  function enemyShips() { return state.ships.filter(s => s.side === Core.SIDE_REAL_ARMADA && !s.sunk); }
-  function playerShips() { return state.ships.filter(s => s.side === Core.SIDE_ROYAL_NAVY); }
-
-  function initBattle() {
-    state = Core.buildInitialState(data, { windFromDeg: 0, windStrength: 'MEDIA' });
-    selectedShipId = playerShips()[0].id;
-    for (const s of playerShips()) s.order.fire = true;
-    syncControlsFromShip();
-    renderAll();
-  }
-
-  function populateSelectors() {
-    const shipSelect = document.getElementById('shipSelect');
-    const targetSelect = document.getElementById('targetSelect');
-    shipSelect.innerHTML = '';
-    for (const s of state.ships.filter(s => s.side === Core.SIDE_ROYAL_NAVY)) {
-      const o = document.createElement('option'); o.value = s.id; o.textContent = s.name; o.disabled = s.sunk; shipSelect.appendChild(o);
-    }
-    targetSelect.innerHTML = '';
-    for (const s of state.ships.filter(s => s.side === Core.SIDE_REAL_ARMADA)) {
-      const o = document.createElement('option'); o.value = s.id; o.textContent = s.name; o.disabled = s.sunk; targetSelect.appendChild(o);
-    }
-    shipSelect.value = selectedShipId;
-    const sel = selectedShip();
-    if (sel && sel.order && shipById(sel.order.targetId) && !shipById(sel.order.targetId).sunk) targetSelect.value = sel.order.targetId;
-    else if (enemyShips()[0]) targetSelect.value = enemyShips()[0].id;
-  }
-
-  function syncControlsFromShip() {
-    populateSelectors();
-    const s = selectedShip(); if (!s) return;
-    document.getElementById('sailSelect').value = s.order.sail;
-    document.getElementById('aimSelect').value = s.order.aim;
-    document.getElementById('fireSelect').value = s.order.fire ? 'yes' : 'no';
-    document.querySelectorAll('[data-rudder]').forEach(b => b.classList.toggle('active', Number(b.dataset.rudder) === Number(s.order.rudder)));
-    updateHistoricalCard();
-  }
-
-  function saveControlsToShip() {
-    const s = selectedShip(); if (!s || s.sunk) return;
-    s.order = {
-      sail: document.getElementById('sailSelect').value,
-      rudder: Number(document.querySelector('[data-rudder].active')?.dataset.rudder || 0),
-      fire: document.getElementById('fireSelect').value === 'yes',
-      aim: document.getElementById('aimSelect').value,
-      targetId: document.getElementById('targetSelect').value
-    };
-    renderAll();
-  }
-
-  function renderShip(s) {
-    const isPlayer = s.side === Core.SIDE_ROYAL_NAVY;
-    const selected = s.id === selectedShipId;
-    ctx.save();
-    ctx.translate(s.x, s.y);
-    ctx.rotate(s.heading * Math.PI / 180);
-    const L = s.historical.visual.lengthM * 1.05;
-    const W = s.historical.visual.beamM * 1.15;
-    ctx.globalAlpha = s.sunk ? .35 : 1;
-    ctx.fillStyle = isPlayer ? '#6fb6e5' : '#d36b63';
-    ctx.strokeStyle = selected ? '#ffd166' : '#e9eef4';
-    ctx.lineWidth = selected ? 3 : 1;
-    ctx.beginPath();
-    ctx.moveTo(0, -L/2);
-    ctx.quadraticCurveTo(W/2, -L/4, W/2, L/3);
-    ctx.quadraticCurveTo(0, L/2, -W/2, L/3);
-    ctx.quadraticCurveTo(-W/2, -L/4, 0, -L/2);
-    ctx.fill(); ctx.stroke();
-    ctx.strokeStyle = '#ead8a7'; ctx.lineWidth = 2;
-    [-L*.20, 0, L*.24].forEach(y => { ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(0,y-L*.18); ctx.stroke(); });
-    ctx.restore();
-
-    ctx.fillStyle = '#ffffff'; ctx.font = '12px system-ui'; ctx.textAlign = 'center';
-    ctx.fillText(s.name + (s.sunk ? ' — HUNDIDO' : ''), s.x, s.y + 42);
-  }
-
-  function renderCanvas() {
-    ctx.clearRect(0,0,canvas.width,canvas.height);
-    ctx.strokeStyle = 'rgba(190,220,240,.12)'; ctx.lineWidth = 1;
-    for (let x=0;x<=1000;x+=50) { ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,700); ctx.stroke(); }
-    for (let y=0;y<=700;y+=50) { ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(1000,y); ctx.stroke(); }
-
-    // Wind arrow: wind FROM north in current pilot.
-    ctx.save(); ctx.translate(940,65); ctx.fillStyle='#fff'; ctx.font='11px system-ui'; ctx.textAlign='center'; ctx.fillText('Viento',0,-28);
-    ctx.rotate((state.windFromDeg+180)*Math.PI/180); ctx.strokeStyle='#fff'; ctx.lineWidth=2; ctx.beginPath(); ctx.moveTo(0,-20); ctx.lineTo(0,20); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(0,20); ctx.lineTo(-6,10); ctx.lineTo(6,10); ctx.closePath(); ctx.fill(); ctx.restore();
-
-    for (const s of state.ships) renderShip(s);
-  }
-
-  function pct(v,m) { return Math.max(0, Math.min(100, v/m*100)); }
-  function shipCard(s) {
-    const active = s.id === selectedShipId ? ' active' : '';
-    const sunk = s.sunk ? ' sunk' : '';
-    return `<div class="ship-card${active}${sunk}" data-card="${s.id}">
-      <div class="ship-name"><span>${s.name}</span><span>${s.sunk ? 'FUERA' : Math.round(s.hull)+' HP'}</span></div>
-      <div class="stat"><span>Casco</span><span>${Math.round(pct(s.hull,s.maxHull))}%</span></div><div class="bar"><span style="width:${pct(s.hull,s.maxHull)}%"></span></div>
-      <div class="stat"><span>Aparejo</span><span>${Math.round(pct(s.rig,s.maxRig))}%</span></div><div class="bar"><span style="width:${pct(s.rig,s.maxRig)}%"></span></div>
-      <div class="stat"><span>Tripulación</span><span>${s.crew}/${s.initialCrew}</span></div>
-      <div class="stat"><span>Velamen / rumbo</span><span>${s.sail} · ${Math.round(s.heading)}°</span></div>
-    </div>`;
-  }
-
-  function updateForceStatus() {
-    const rn = state.ships.filter(s=>s.side===Core.SIDE_ROYAL_NAVY);
-    const ra = state.ships.filter(s=>s.side===Core.SIDE_REAL_ARMADA);
-    document.getElementById('forceStatus').innerHTML = `<h3>Royal Navy</h3>${rn.map(shipCard).join('')}<h3>Real Armada</h3>${ra.map(shipCard).join('')}`;
-  }
-
-  function updateHistoricalCard() {
-    const s = selectedShip(); if (!s) return;
-    const h = s.historical;
-    document.getElementById('historicalCard').innerHTML = `
-      <b>${h.name}</b><br>${h.rate}<br>Configuración: ${h.configurationDate}<br>
-      Eslora fuente: ${h.dimensions.lengthSource} (${h.dimensions.lengthM.toFixed(2)} m derivados)<br>
-      Manga fuente: ${h.dimensions.beamSource} (${h.dimensions.beamM.toFixed(2)} m derivados)<br>
-      Dotación de trabajo: ${h.crew.actionComplement}<br>
-      Piezas principales: ${h.armament.principalPieces} · por banda: ${h.armament.gunsPerBroadside}<br>
-      Andanada cañones largos: ${h.armament.broadsideLongKg.toFixed(1)} kg derivados<br>
-      Armamento corto registrado: ${h.armament.broadsideShortKg.toFixed(1)} kg nominales (${h.armament.shortArmType}), aún no usado en la fórmula de daño.<br><br>
-      <b>Evidencia marinera:</b> ${h.sailingEvidence}`;
-  }
-
-  function updateOrdersSummary() {
-    document.getElementById('ordersSummary').innerHTML = playerShips().map(s => {
-      const t = shipById(s.order.targetId);
-      return `<div><b>${s.name}</b>: ${s.order.sail}, timón ${s.order.rudder}, ${s.order.fire?'disparar':'no disparar'} a ${t?t.name:'—'}, ${s.order.aim==='HULL'?'casco':'aparejo'}.</div>`;
-    }).join('');
-  }
-
-  function updateLog() {
-    document.getElementById('log').textContent = state.log.slice(-80).join('\n');
-    document.getElementById('log').scrollTop = document.getElementById('log').scrollHeight;
-  }
-
-  function updateHeader() {
-    document.getElementById('turnPill').textContent = `Turno ${state.turn}`;
-    document.getElementById('windPill').textContent = `Viento ${Math.round(state.windFromDeg)}° · ${state.windStrength}`;
-    const p = document.getElementById('resultPill');
-    if (!state.result) { p.textContent='En combate'; p.className='pill'; }
-    else if (state.result === Core.SIDE_ROYAL_NAVY) { p.textContent='Victoria Royal Navy'; p.className='pill success'; }
-    else if (state.result === Core.SIDE_REAL_ARMADA) { p.textContent='Victoria Real Armada'; p.className='pill danger'; }
-    else { p.textContent='Empate'; p.className='pill'; }
-    document.getElementById('resolveTurn').disabled = !!state.result;
-  }
-
-  function renderAll() {
-    populateSelectors(); renderCanvas(); updateForceStatus(); updateHistoricalCard(); updateOrdersSummary(); updateLog(); updateHeader();
-  }
-
-  function resolveTurn() {
-    saveControlsToShip();
-    // Any Royal Navy ship not explicitly edited retains its previous order.
-    Core.resolveTurn(state, { rng, autoSides: [Core.SIDE_REAL_ARMADA] });
-    // If selected ship sank, switch to the surviving friend.
-    const current = selectedShip();
-    if (!current || current.sunk) {
-      const survivor = playerShips().find(s=>!s.sunk); if (survivor) selectedShipId = survivor.id;
-    }
-    syncControlsFromShip(); renderAll();
-  }
-
-  document.getElementById('shipSelect').addEventListener('change', e => { saveControlsToShip(); selectedShipId = e.target.value; syncControlsFromShip(); renderAll(); });
-  document.getElementById('targetSelect').addEventListener('change', saveControlsToShip);
-  document.getElementById('sailSelect').addEventListener('change', saveControlsToShip);
-  document.getElementById('aimSelect').addEventListener('change', saveControlsToShip);
-  document.getElementById('fireSelect').addEventListener('change', saveControlsToShip);
-  document.querySelectorAll('[data-rudder]').forEach(b => b.addEventListener('click', () => { document.querySelectorAll('[data-rudder]').forEach(x=>x.classList.remove('active')); b.classList.add('active'); saveControlsToShip(); }));
-  document.getElementById('saveOrder').addEventListener('click', saveControlsToShip);
-  document.getElementById('resolveTurn').addEventListener('click', resolveTurn);
-  document.getElementById('resetBattle').addEventListener('click', initBattle);
-
-  canvas.addEventListener('click', e => {
-    const r = canvas.getBoundingClientRect(); const sx = canvas.width/r.width, sy = canvas.height/r.height;
-    const x = (e.clientX-r.left)*sx, y=(e.clientY-r.top)*sy;
-    let best=null, bd=40;
-    for (const s of state.ships) { const d=Math.hypot(s.x-x,s.y-y); if(d<bd){best=s;bd=d;} }
-    if (!best) return;
-    if (best.side === Core.SIDE_ROYAL_NAVY && !best.sunk) { saveControlsToShip(); selectedShipId=best.id; syncControlsFromShip(); }
-    if (best.side === Core.SIDE_REAL_ARMADA && !best.sunk) { document.getElementById('targetSelect').value=best.id; saveControlsToShip(); }
-    renderAll();
-  });
-
-  try {
-    data = await loadData();
-    initBattle();
-  } catch (err) {
-    document.body.innerHTML = `<pre style="padding:20px;color:#ffb4b4">Error al iniciar piloto 2v2: ${String(err.stack||err)}</pre>`;
-  }
-})();
-</script>
+<script src="src/pilot2v2-ui.js"></script>
 </body>
 </html>
