@@ -13,15 +13,52 @@
     <h1>Simulador Naval Histórico — Piloto 2v2</h1>
     <div class="small">HMS Bellerophon + HMS Conqueror vs Montañés + Bahama · octubre de 1805</div>
     <div class="top-status">
-      <span class="pill" id="turnPill">Turno 1</span>
-      <span class="pill" id="windPill">Viento N · MEDIA</span>
-      <span class="pill" id="resultPill">En combate</span>
+      <span class="pill" id="turnPill">Preparación</span>
+      <span class="pill" id="windPill">Viento 0° · MEDIA</span>
+      <span class="pill" id="resultPill">Sin iniciar</span>
     </div>
   </header>
 
   <aside class="panel" id="leftPanel">
+    <section id="prebattleConfig" class="prebattle-config">
+      <h2>Configuración de partida</h2>
+      <div class="two-col">
+        <div>
+          <label for="turnDurationInput">Duración turno (seg)</label>
+          <input id="turnDurationInput" type="number" min="10" value="60" />
+        </div>
+        <div>
+          <label for="windStrengthSetting">Viento inicial</label>
+          <select id="windStrengthSetting">
+            <option value="CALMA">Calma</option>
+            <option value="MEDIA" selected>Media</option>
+            <option value="FUERTE">Fuerte</option>
+          </select>
+        </div>
+      </div>
+      <div class="two-col">
+        <div>
+          <label for="rnCrewExperience">Experiencia Royal Navy</label>
+          <select id="rnCrewExperience">
+            <option value="NOVATA">Novata</option>
+            <option value="NORMAL" selected>Normal</option>
+            <option value="VETERANA">Veterana</option>
+          </select>
+        </div>
+        <div>
+          <label for="raCrewExperience">Experiencia Real Armada</label>
+          <select id="raCrewExperience">
+            <option value="NOVATA">Novata</option>
+            <option value="NORMAL" selected>Normal</option>
+            <option value="VETERANA">Veterana</option>
+          </select>
+        </div>
+      </div>
+      <button id="startBattle" class="start-button">Iniciar partida</button>
+    </section>
+
     <h2>Órdenes del buque seleccionado</h2>
-    <div class="warning">Se restaura la interacción del prototipo: silueta de navío, velamen visible, sombra de movimiento, timón ±4, banda de tiro, sección, munición, teclado y cámara desplazable. La física sigue siendo provisional hasta el nuevo motor histórico.</div>
+    <div class="warning">La versión estable `batalla-naval-juego-1` es el piso funcional: ninguna mecánica existente se elimina al pasar a 2v2. Los valores históricos de cada navío sustituyen los antiguos genéricos.</div>
 
     <label for="shipSelect">Buque Royal Navy</label>
     <select id="shipSelect"></select>
@@ -48,6 +85,7 @@
       <button class="cmd-button" data-rudder="3">+3</button>
       <button class="cmd-button" data-rudder="4">T▶</button>
     </div>
+    <div id="rudderHint" class="small status-warn"></div>
 
     <label for="targetSelect">Objetivo</label>
     <select id="targetSelect"></select>
@@ -68,7 +106,7 @@
       </div>
     </div>
 
-    <label for="ammoSelect">Munición</label>
+    <label for="ammoSelect">Cargar para el próximo turno</label>
     <select id="ammoSelect">
       <option value="ROUND_SHOT">Bala redonda</option>
       <option value="GRAPE">Metralla</option>
@@ -89,13 +127,13 @@
     </div>
     <button id="saveOrder" class="legacy-hidden" aria-hidden="true">Guardar órdenes de este buque</button>
     <button id="resolveTurn" class="resolve" style="width:100%;margin-top:7px">Resolver turno simultáneo (E)</button>
-    <button id="resetBattle" style="width:100%;margin-top:7px">Reiniciar batalla</button>
+    <button id="resetBattle" style="width:100%;margin-top:7px">Volver a configuración</button>
 
     <h3>Estado de órdenes</h3>
     <div id="ordersSummary" class="small"></div>
 
     <div class="key-help small">
-      <strong>Teclado:</strong> W/S velamen · A/D timón · Q confirmar · E resolver · C centrar · Tab cambiar buque.<br>
+      <strong>Teclado:</strong> W/S velamen · A/D timón · Q confirmar · E resolver · P pausa · C centrar · Tab cambiar buque.<br>
       <strong>Mapa:</strong> botón derecho + arrastrar desplaza la cámara · rueda hace zoom · click azul selecciona · click rojo fija objetivo.
     </div>
   </aside>
@@ -112,7 +150,7 @@
       <button id="zoomIn">Zoom +</button>
       <button id="zoomOut">Zoom −</button>
     </div>
-    <div id="tacticalOverlay">Mueve el cursor sobre un buque para información táctica.</div>
+    <div id="tacticalOverlay">Configure la partida y pulse Iniciar partida.</div>
   </main>
 
   <aside class="panel" id="rightPanel">
@@ -120,13 +158,15 @@
     <div id="forceStatus"></div>
     <h3>Ficha del buque seleccionado</h3>
     <div id="historicalCard" class="small"></div>
-    <h3>Informe</h3>
+    <h3>Informe del turno</h3>
     <div id="log"></div>
   </aside>
 
   <footer>
+    <span class="pill clock-pill" id="turnClock">Tiempo: --:--</span>
     <span class="pill" id="selectedPill">Seleccionado: —</span>
-    <div id="mainMessage">Da órdenes a ambos navíos británicos y confírmalas antes de resolver.</div>
+    <div id="mainMessage">Configure la partida y pulse Iniciar partida.</div>
+    <button id="pauseBattle">Pausar (P)</button>
   </footer>
 </div>
 
