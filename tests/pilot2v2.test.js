@@ -82,6 +82,20 @@ test('seeded four-ship simulation remains numerically valid over many turns', ()
   assert.ok(state.log.length > 1);
 });
 
+test('AI-vs-AI benchmark reaches a battle result without state corruption', () => {
+  const state = Core.buildInitialState(data, { windFromDeg: 0, windStrength: 'MEDIA' });
+  const rng = Core.seededRng(2101805);
+  for (let i = 0; i < 500 && !state.result; i++) {
+    Core.resolveTurn(state, {
+      rng,
+      autoSides: [Core.SIDE_ROYAL_NAVY, Core.SIDE_REAL_ARMADA]
+    });
+    assert.deepEqual(Core.validateState(state), [], `state corruption at benchmark turn ${i}`);
+  }
+  assert.ok(state.result, `benchmark did not finish after ${state.turn - 1} turns`);
+  assert.ok(['royal-navy', 'real-armada', 'draw'].includes(state.result));
+});
+
 test('both human-side ships can retain separate orders and targets', () => {
   const state = Core.buildInitialState(data);
   const rn = state.ships.filter(s => s.side === Core.SIDE_ROYAL_NAVY);
@@ -93,4 +107,16 @@ test('both human-side ships can retain separate orders and targets', () => {
   assert.notDeepEqual(rn[0].order, rn[1].order);
   assert.equal(rn[0].order.targetId, sp[0].id);
   assert.equal(rn[1].order.targetId, sp[1].id);
+});
+
+test('pilot page wires the historical data and reusable simulation core', () => {
+  const html = fs.readFileSync(path.join(__dirname, '..', 'pilot-2v2.html'), 'utf8');
+  assert.match(html, /src\/pilot2v2-core\.js/);
+  assert.match(html, /data\/historical_ships_1805\.json/);
+  assert.match(html, /HMS Bellerophon/);
+  assert.match(html, /Montañés/);
+  assert.match(html, /Resolver turno simultáneo/);
+  for (const id of ['shipSelect', 'targetSelect', 'sailSelect', 'aimSelect', 'fireSelect', 'resolveTurn', 'battleCanvas']) {
+    assert.match(html, new RegExp(`id=["']${id}["']`), `missing UI id ${id}`);
+  }
 });
