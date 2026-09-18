@@ -11,12 +11,28 @@ Goal: deliver a deep, historically grounded duel simulator between real age-of-s
 - Preserve current prototype.
 - Establish documentation, research, decision, and testing conventions.
 
+### Early vertical pilot — Historical ships 2v2
+
+Before the deeper engine work is complete, build one deliberately limited 2v2 development pilot to make the historical-data transition visible and to expose one-ship-per-side assumptions early.
+
+- Research and select four real historical ships from the 18th or early 19th century.
+- Use dated, sourced configurations rather than generic ship statistics.
+- Add a second real ship to each side.
+- Balance at the force-composition level by ship selection, not by invented bonuses.
+- Externalize ship definitions where necessary.
+- Make targeting, movement, damage state and turn resolution support four ships.
+- Deploy only to the development Render service while the current stable simulator remains untouched.
+- Treat this as a technical/development scenario, not as the replacement for the formal 1v1 milestone.
+
+Detailed plan: `docs/plans/HISTORICAL_SHIPS_2V2_PILOT.md`.
+
 ### Phase 1 — Mechanics archaeology and specification
 
 - Extract Velmad v1.2 mechanics into a structured matrix.
 - Audit the current prototype against that matrix.
 - Mark retained, missing, simplified, uncertain, and candidate-improvement mechanics.
 - Research historical evidence for improvements before changing behavior.
+- Work incrementally by subsystem rather than requiring the entire matrix to be complete before all experimentation.
 
 ### Phase 2 — Simulation architecture
 
@@ -89,7 +105,7 @@ Goal: deliver a deep, historically grounded duel simulator between real age-of-s
 
 ## Later milestones — intentionally deferred
 
-- Multi-ship fleet battles.
+- Full multi-ship fleet battles beyond the limited 2v2 development pilot.
 - Historical signal command and admiral/captain hierarchy.
 - Long asynchronous official battles.
 - Career, ranks, merit, command assignment/auction systems.
