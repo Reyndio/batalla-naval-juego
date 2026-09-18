@@ -1,88 +1,66 @@
-// 1. Importar las librerías que instalamos
 const express = require('express');
 const sqlite3 = require('sqlite3').verbose();
 const bcrypt = require('bcryptjs');
+const path = require('path');
 
-// 2. Inicializar la aplicación Express
 const app = express();
-const port = 3000; // El puerto donde se ejecutará nuestro servidor
+const port = Number(process.env.PORT) || 3000;
 
-// 3. Conectar a la base de datos (o crearla si no existe)
 const db = new sqlite3.Database('./batalla_naval.db', (err) => {
     if (err) {
-        console.error("Error abriendo la base de datos: " + err.message);
+        console.error('Error abriendo la base de datos: ' + err.message);
     } else {
-        console.log("Conectado a la base de datos SQLite.");
-        // Crear la tabla de usuarios si no existe
-        db.run('CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY AUTOINCREMENT, username TEXT UNIQUE, password TEXT)', (err) => {
-            if (err) {
-                console.error("Error creando la tabla: " + err.message);
-            }
+        console.log('Conectado a la base de datos SQLite.');
+        db.run('CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY AUTOINCREMENT, username TEXT UNIQUE, password TEXT)', (createErr) => {
+            if (createErr) console.error('Error creando la tabla: ' + createErr.message);
         });
     }
 });
 
-// 4. Middlewares: funciones que se ejecutan en cada petición
-app.use(express.json()); // Para poder entender los datos JSON que envía el frontend
-app.use(express.static('.')); // Para servir archivos estáticos como index.html, css, etc. desde la carpeta actual
+app.use(express.json());
+app.use(express.static('.'));
 
-// 5. Definir las "rutas" o "endpoints" de nuestra API
+// Development-pilot convenience routes. The legacy index/login flow remains untouched.
+app.get('/pilot', (_req, res) => {
+    res.sendFile(path.join(__dirname, 'pilot-2v2.html'));
+});
 
-// --- Ruta para Registrar un nuevo usuario ---
+app.get('/health', (_req, res) => {
+    res.status(200).json({ status: 'ok', pilot: 'historical-2v2' });
+});
+
 app.post('/api/register', (req, res) => {
     const { username, password } = req.body;
+    if (!username || !password) return res.status(400).json({ message: 'Usuario y contraseña son requeridos.' });
 
-    if (!username || !password) {
-        return res.status(400).json({ message: "Usuario y contraseña son requeridos." });
-    }
-
-    // Hashear (encriptar) la contraseña antes de guardarla
     const salt = bcrypt.genSaltSync(10);
     const hashedPassword = bcrypt.hashSync(password, salt);
-
     const sql = 'INSERT INTO users (username, password) VALUES (?, ?)';
     db.run(sql, [username, hashedPassword], function(err) {
         if (err) {
-            // El código 19 significa que el usuario ya existe (violación de la restricción UNIQUE)
-            if (err.errno === 19) {
-                return res.status(409).json({ message: "El nombre de usuario ya existe." });
-            }
-            return res.status(500).json({ message: "Error al registrar el usuario.", error: err.message });
+            if (err.errno === 19) return res.status(409).json({ message: 'El nombre de usuario ya existe.' });
+            return res.status(500).json({ message: 'Error al registrar el usuario.', error: err.message });
         }
-        res.status(201).json({ message: "Usuario registrado con éxito.", userId: this.lastID });
+        res.status(201).json({ message: 'Usuario registrado con éxito.', userId: this.lastID });
     });
 });
 
-// --- Ruta para Iniciar Sesión ---
 app.post('/api/login', (req, res) => {
     const { username, password } = req.body;
-
-    if (!username || !password) {
-        return res.status(400).json({ message: "Usuario y contraseña son requeridos." });
-    }
+    if (!username || !password) return res.status(400).json({ message: 'Usuario y contraseña son requeridos.' });
 
     const sql = 'SELECT * FROM users WHERE username = ?';
     db.get(sql, [username], (err, user) => {
-        if (err) {
-            return res.status(500).json({ message: "Error en el servidor.", error: err.message });
-        }
-        if (!user) {
-            return res.status(404).json({ message: "Usuario no encontrado." });
-        }
+        if (err) return res.status(500).json({ message: 'Error en el servidor.', error: err.message });
+        if (!user) return res.status(404).json({ message: 'Usuario no encontrado.' });
 
-        // Comparar la contraseña enviada con la hasheada en la BD
         const isPasswordCorrect = bcrypt.compareSync(password, user.password);
-
-        if (isPasswordCorrect) {
-            res.status(200).json({ message: "Inicio de sesión exitoso." });
-        } else {
-            res.status(401).json({ message: "Contraseña incorrecta." });
-        }
+        if (isPasswordCorrect) res.status(200).json({ message: 'Inicio de sesión exitoso.' });
+        else res.status(401).json({ message: 'Contraseña incorrecta.' });
     });
 });
 
-
-// 6. Iniciar el servidor
-app.listen(port, () => {
-    console.log(`Servidor corriendo en http://localhost:${port}`);
+app.listen(port, '0.0.0.0', () => {
+    console.log(`Servidor corriendo en puerto ${port}`);
+    console.log(`Piloto histórico 2v2 disponible en /pilot`);
 });
