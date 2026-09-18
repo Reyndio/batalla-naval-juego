@@ -1,6 +1,6 @@
 # Historical Ships 2v2 Pilot
 
-Status: planned
+Status: **playable vertical slice validated on development service**
 Date: 2026-09-18
 
 ## Purpose
@@ -23,19 +23,19 @@ Balance is secondary to historical fidelity. Any remaining asymmetry must be doc
 
 Detailed decision: `docs/decisions/ADR-0002-2v2-historical-configuration-balance.md`.
 
-## Ship selection criteria
+## Selected forces
 
-The four ships should:
+Royal Navy:
 
-- belong to the project's main period of interest: the 18th century or early 19th century;
-- be real, individually identified historical vessels;
-- have sufficiently documented dimensions, armament, crew, rig, service configuration, and history;
-- preferably have surviving plans, draughts, museum material, or reliable contemporary/near-contemporary illustrations;
-- preferably come from the same broad historical period so that armament and sailing characteristics are meaningfully comparable;
-- form two coherent national sides;
-- permit a reasonably balanced 2v2 development scenario without artificial stat bonuses.
+- HMS Bellerophon — 21 October 1805 configuration.
+- HMS Conqueror — 21 October 1805 configuration.
 
-The selection must be researched before implementation. Do not choose ships merely because they are famous.
+Real Armada:
+
+- Montañés — 19–21 October 1805 configuration.
+- Bahama — 19–21 October 1805 configuration.
+
+The pair-level research and configuration rationale are documented under `docs/research/`.
 
 ## Historical data required per ship
 
@@ -54,17 +54,25 @@ At minimum:
 - plans, draughts, profiles and illustrations with provenance/licensing status;
 - confidence labels: documented, reconstructed, estimated, unknown.
 
+These requirements are satisfied to the level needed for the limited vertical slice through the four ship sheets and `docs/research/HISTORICAL_SHIPS_2V2_DATA_SPEC.md`. Unsupported numerical sailing/crew-quality values remain outside the historical data layer rather than being invented.
+
 ## First implementation scope
 
-The first implementation should be deliberately limited to a visible and testable vertical slice:
+The first implementation is deliberately limited to a visible and testable vertical slice:
 
 1. Externalize ship definitions from hard-coded player/AI assumptions where necessary.
 2. Add four historical ship records.
 3. Render all four ships with historically differentiated scale/silhouette as far as the available sources support.
 4. Add a second ship to each side.
-5. Make selection, targeting, movement state, damage state and turn resolution work for four ships without breaking the existing mechanics.
+5. Make selection, targeting, movement state, damage state and turn resolution work for four ships without state corruption.
 6. Preserve the original prototype at `archive/prototype-v1`.
 7. Deploy the pilot only to the development Render service, never directly over the stable reference service.
+
+## Implemented control model
+
+The pilot uses one human controller for both Royal Navy vessels and AI control for both Spanish vessels.
+
+The human can assign independent ship orders including target, sail state, rudder, fire/no-fire and hull/rigging aim. The architecture no longer assumes that one side equals one ship within the pilot core.
 
 ## What is explicitly not required in this pilot
 
@@ -82,12 +90,6 @@ Do not add yet:
 
 Those systems will be built later on the common simulation engine.
 
-## Control model for the pilot
-
-Initial implementation may use one controller per side controlling both ships, or AI support for the second ship, depending on the smallest safe change to the current architecture.
-
-The implementation chat must inspect the current code before deciding this detail. The long-term architecture must not assume permanently that one side equals one ship.
-
 ## Balance methodology
 
 Do not manufacture equality by editing historical ship characteristics.
@@ -104,29 +106,42 @@ Use this order:
 
 Early balance assessment may consider documented armament, broadside composition, crew, hull size, sailing qualities and current-engine behavior, but no single arbitrary points formula should be treated as historical truth.
 
-If different configuration dates are selected for the four ships, the pilot should be presented as a historically plausible development scenario, not as an exact recreation of a single historical battle date.
+The selected pair remains very close on a coarse nominal projectile-mass screen, while preserving different weapon mixes. This screen is not treated as a combat-value formula.
 
-## Deliverables for the dedicated chat
+## Delivered artifacts
 
-The dedicated chat for this change should produce, in order:
+- Research comparison and source-quality notes.
+- Final four-ship selection and configuration rationale.
+- Four sourced technical sheets.
+- Externalized machine-readable ship data.
+- Feature branch `feature/historical-2v2-pilot`.
+- Reusable pilot simulation core.
+- Playable browser UI at `/pilot`.
+- Automated multi-ship state, targeting, battle-completion and HTTP route tests.
+- Isolated Render development deployment.
+- Validation/playtest report: `docs/reports/HISTORICAL_2V2_PILOT_PLAYTEST.md`.
+- Updated `PROJECT_STATE.md`.
 
-1. Research note comparing candidate ships and source quality.
-2. Final four-ship selection with rationale.
-3. Historical data files and provenance.
-4. Feature branch for implementation.
-5. Automated tests for multi-ship state/targeting where practical.
-6. Development deployment on Render.
-7. Manual playtest report comparing stable prototype vs 2v2 pilot.
-8. Updated `PROJECT_STATE.md` and affected documentation.
+## Development deployment
 
-## Success criteria
+Service: `batalla-naval-2v2-dev`
 
-The pilot is successful when:
+Playable route:
 
-- four real historical ships appear and behave as distinct ship records;
-- the two sides can complete a battle without state/targeting corruption;
-- the original stable simulator remains available and untouched;
-- historical data can be traced to sources;
-- no balancing statistic was invented merely to force equality;
-- selected historical configurations remain source-supported and internally coherent;
-- the new architecture makes later 1v1 and multi-ship scenarios easier rather than harder.
+`https://batalla-naval-2v2-dev.onrender.com/pilot`
+
+The stable service `batalla-naval-juego-1` remains untouched on `main`.
+
+## Success criteria — current result
+
+- four real historical ships appear and behave as distinct ship records — **met**;
+- the two sides can complete a battle without state/targeting corruption — **met in automated AI-vs-AI benchmark**;
+- the original stable simulator remains available and untouched — **met**;
+- historical data can be traced to sources — **met**;
+- no balancing statistic was invented merely to force equality — **met**;
+- selected historical configurations remain source-supported and internally coherent — **met for pilot gate**;
+- the new architecture makes later 1v1 and multi-ship scenarios easier rather than harder — **partially met**: ship data and pilot core are externalized, but the next step is the shared-engine refactor rather than further growth of the temporary page.
+
+## Exit rule
+
+The pilot has served its purpose once integrated and retained as a regression scenario. Do not continue turning `pilot-2v2.html` into a second permanent simulator. The next durable development work must move common state/order/sailing/combat behavior into the shared historical simulation engine that will support the primary 1v1 milestone and later multi-ship scenarios.
