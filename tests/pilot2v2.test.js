@@ -2,6 +2,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
+const { spawn } = require('node:child_process');
 
 const Core = require('../src/pilot2v2-core.js');
 const data = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'data', 'historical_ships_1805.json'), 'utf8'));
@@ -119,4 +120,50 @@ test('pilot page wires the historical data and reusable simulation core', () => 
   for (const id of ['shipSelect', 'targetSelect', 'sailSelect', 'aimSelect', 'fireSelect', 'resolveTurn', 'battleCanvas']) {
     assert.match(html, new RegExp(`id=["']${id}["']`), `missing UI id ${id}`);
   }
+});
+
+test('server serves health and playable pilot routes over HTTP', { timeout: 10000 }, async (t) => {
+  const port = 18105;
+  const cwd = path.join(__dirname, '..');
+  const child = spawn(process.execPath, ['server.js'], {
+    cwd,
+    env: { ...process.env, PORT: String(port) },
+    stdio: ['ignore', 'pipe', 'pipe']
+  });
+  t.after(() => {
+    if (!child.killed) child.kill('SIGTERM');
+  });
+
+  let stderr = '';
+  child.stderr.on('data', chunk => { stderr += chunk.toString(); });
+
+  await new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error(`server did not start; stderr=${stderr}`)), 6000);
+    child.stdout.on('data', chunk => {
+      if (chunk.toString().includes(`Servidor corriendo en puerto ${port}`)) {
+        clearTimeout(timer);
+        resolve();
+      }
+    });
+    child.once('exit', code => {
+      clearTimeout(timer);
+      reject(new Error(`server exited before smoke test, code=${code}; stderr=${stderr}`));
+    });
+  });
+
+  const health = await fetch(`http://127.0.0.1:${port}/health`);
+  assert.equal(health.status, 200);
+  const healthJson = await health.json();
+  assert.deepEqual(healthJson, { status: 'ok', pilot: 'historical-2v2' });
+
+  const pilot = await fetch(`http://127.0.0.1:${port}/pilot`);
+  assert.equal(pilot.status, 200);
+  const html = await pilot.text();
+  assert.match(html, /Simulador Naval Histórico — Piloto 2v2/);
+  assert.match(html, /battleCanvas/);
+
+  const dataResponse = await fetch(`http://127.0.0.1:${port}/data/historical_ships_1805.json`);
+  assert.equal(dataResponse.status, 200);
+  const servedData = await dataResponse.json();
+  assert.equal(servedData.ships.length, 4);
 });
