@@ -133,7 +133,7 @@
 
   function windSpeedModifier(ship, windFromDeg, windStrength) {
     const windToward = normalizeAngle(windFromDeg + 180);
-    let rel = Math.abs(angleDiff(ship.heading, windToward));
+    const rel = Math.abs(angleDiff(ship.heading, windToward));
     let mod = 1;
     if (windStrength === 'CALMA') {
       mod = rel <= 45 ? 1.05 : rel >= 135 ? 0.8 : 0.95;
@@ -185,26 +185,60 @@
     return 0;
   }
 
+  function rudderTowardHeading(ship, desiredHeading) {
+    const err = angleDiff(desiredHeading, ship.heading);
+    if (Math.abs(err) > 35) return err > 0 ? 2 : -2;
+    if (Math.abs(err) > 10) return err > 0 ? 1 : -1;
+    return 0;
+  }
+
   function planAIOrder(state, ship) {
     if (ship.sunk) return defaultOrder(ship, null);
     const target = nearestEnemy(state, ship);
     if (!target) return defaultOrder(ship, null);
-    const d = distance(ship, target);
-    const rel = relativeBearing(ship, target);
 
-    let rudder = 0;
-    const desired = rel <= 180 ? 90 : 270;
-    let err = angleDiff(rel, desired);
-    if (Math.abs(err) > 55) rudder = err > 0 ? -2 : 2;
-    else if (Math.abs(err) > 18) rudder = err > 0 ? -1 : 1;
+    const d = distance(ship, target);
+    const bearing = angleTo(ship, target);
+    const arc = broadsideArcFactor(ship, target);
+    let desiredHeading;
+
+    // First close the range. Once in an effective engagement envelope, seek the
+    // nearer of the two headings that places the target roughly abeam.
+    if (d > 320) {
+      desiredHeading = bearing;
+    } else {
+      const candidateA = normalizeAngle(bearing - 90);
+      const candidateB = normalizeAngle(bearing + 90);
+      desiredHeading = Math.abs(angleDiff(candidateA, ship.heading)) <= Math.abs(angleDiff(candidateB, ship.heading))
+        ? candidateA
+        : candidateB;
+    }
 
     let sail = 'MV';
-    if (d > 430) sail = 'TV';
-    else if (d < 130) sail = 'PV';
+    if (d > 390) sail = 'TV';
+    else if (d < 120) sail = 'PV';
 
-    const arc = broadsideArcFactor(ship, target);
-    const fire = d <= MAX_FIRE_RANGE && arc.factor > 0;
-    return { sail, rudder, fire, aim: target.rig > target.maxRig * 0.55 ? 'HULL' : 'RIGGING', targetId: target.id };
+    // When a usable broadside already exists, reduce helm changes to keep the
+    // firing solution instead of endlessly circling past it.
+    let rudder = arc.factor > 0 && d <= 300 ? 0 : rudderTowardHeading(ship, desiredHeading);
+
+    // Boundary recovery prevents an AI ship from remaining pinned against the
+    // world edge while its target is elsewhere.
+    if (ship.x < 55 || ship.x > WORLD.width - 55 || ship.y < 55 || ship.y > WORLD.height - 55) {
+      const centerHeading = angleTo(ship, { x: WORLD.width / 2, y: WORLD.height / 2 });
+      rudder = rudderTowardHeading(ship, centerHeading);
+      sail = 'MV';
+    }
+
+    const currentArc = broadsideArcFactor(ship, target);
+    const fire = d <= MAX_FIRE_RANGE && currentArc.factor > 0;
+    return {
+      sail,
+      rudder,
+      fire,
+      aim: target.rig > target.maxRig * 0.55 ? 'HULL' : 'RIGGING',
+      targetId: target.id
+    };
   }
 
   function applyCollisionDamage(state) {
@@ -241,8 +275,8 @@
       return;
     }
 
-    // Deliberately conservative pilot formula: only documented long-gun broadside mass drives damage.
-    // Carronades and Spanish obuses are stored/displayed but are not treated as equivalent here.
+    // Conservative pilot formula: only documented long-gun broadside mass drives damage.
+    // Carronades and Spanish obuses remain separate historical data, not equivalents.
     const longKg = attacker.historical.armament.broadsideLongKg;
     const spread = 0.86 + (rng ? rng() : Math.random()) * 0.28;
     const raw = longKg * 0.38 * rf * arc.factor * spread;
@@ -305,8 +339,6 @@
 
     applyCollisionDamage(state);
 
-    // Simultaneous intent, sequential application. Ships destroyed by an earlier broadside retain their order
-    // only if they were alive at firing phase start; this keeps the pilot predictable without claiming final doctrine.
     const firingSnapshot = state.ships.filter(s => !s.sunk).map(s => s.id);
     for (const id of firingSnapshot) {
       const attacker = state.ships.find(s => s.id === id);
