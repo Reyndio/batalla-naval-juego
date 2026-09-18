@@ -12,108 +12,94 @@ Last updated: 2026-09-18
 
 ## Current status
 
-- Original playable prototype frozen at `archive/prototype-v1`, pointing to commit `31fe6620cf262bbe99cf680363a6962d4ddc26f8` (the last prototype commit before project-structure metadata was added).
-- `main` remains the stable/default branch and contains the project pointer used to discover the canonical development branch.
-- Canonical historical-simulator development branch: `develop/historical-simulator`.
-- ChatGPT Project configured to use GitHub as the source of truth.
-- Velmad v1.2 recovered and adopted as the foundational mechanics baseline, subject to evidence-based historical improvement.
-- Render connection verified: `batalla-naval-juego-1` is the current functional Node service on `main`; the older `batalla-naval-juego` service is a failed Docker deployment and is not the stable reference.
-- No simulation-engine refactor has started yet.
-- An early visible development pilot is approved: four real historical ships in a limited 2v2 scenario, with balance achieved through historical ship/configuration selection rather than invented stat bonuses.
-- Side-composition rule: each side must be one coherent navy/nation; no mixed-national allied teams in this pilot.
-- Working quartet: **HMS Bellerophon + HMS Conqueror versus Montañés + Bahama**.
-- ADR-0002 allows balance to choose among genuinely documented dated configurations of an individual vessel, but forbids synthetic best-of-all-dates ships, arbitrary interpolation and use of weak source uncertainty as a tuning slider.
-- The configuration-envelope research pass is complete. It found that the best-balanced supportable set is still the common **19–21 October 1805 / Trafalgar configuration set** rather than a mixture of dates.
-- The four working pilot configurations are now frozen for data-spec work unless stronger primary evidence forces correction:
-  - **HMS Bellerophon, 21 Oct 1805:** 28 x 32-pdr, 28 x 18-pdr, 18 x 9-pdr, 2 x 32-pdr carronades, 6 x 18-pdr carronades; working action complement 522, with men-borne/muster fields to remain separate.
-  - **HMS Conqueror, 21 Oct 1805:** 28 x 32-pdr, 30 x 18-pdr, 16 x 9-pdr, 2 x 32-pdr carronades, 6 x 18-pdr carronades; working action complement 573. The stronger 1803 establishment remains documented as an alternative but is not selected.
-  - **Montañés, 19–21 Oct 1805:** 28 x 36-lb, 30 x 18-lb, 8 x 8-lb, 10 x 30-lb obuses; **76 counted principal combat pieces**; working complement 749. Do not convert the later `76/80` wording into four unidentified combat guns.
-  - **Bahama, 19–21 Oct 1805:** 28 x 24-lb, 30 x 18-lb, 10 x 8-lb, 6 x 30-lb obuses, 4 x 24-lb obuses; **78 counted principal pieces**; small pedreros documented separately; working operational complement 689, while 702 remains recorded as a secondary-source discrepancy.
-- Coarse pair-level screening using nominal projectile mass gives approximately 790.6 kg per full broadside for the selected British pair and 800.6 kg for the selected Spanish pair, about a 1.3% Spanish aggregate edge. This is a screening diagnostic only, not a combat-value score.
-- The selected pairs remain tactically different: the British pair has more nominal long-gun broadside mass on this screen, while the Spanish pair has more nominal projectile mass in short obus armament. Obuses and carronades are not treated as equivalent weapons.
-- Crew headcount remains substantially asymmetric: selected action/operational figures total 1,095 British versus 1,438 Spanish. This will not be tuned away by cross-date crew cherry-picking; crew composition and evidence-based quality/training must be modeled separately.
-- Montañés working technical length is now **190 pies de Burgos**; the 194-foot value remains documented as a conflicting secondary figure pending direct primary-plan dimension extraction.
-- Research notes:
-  - `docs/research/HISTORICAL_SHIPS_2V2_CANDIDATE_SELECTION.md`
-  - `docs/research/HISTORICAL_SHIPS_2V2_CONFIGURATION_ENVELOPE.md`
-- Balance/configuration policy: `docs/decisions/ADR-0002-2v2-historical-configuration-balance.md`.
+- Original playable prototype frozen at `archive/prototype-v1`, commit `31fe6620cf262bbe99cf680363a6962d4ddc26f8`.
+- `main` remains the stable/default discovery branch; normal development does not occur there.
+- Canonical integration branch: `develop/historical-simulator`.
+- Velmad v1.2 is the mechanics baseline, subject to evidence-based historical improvement.
+- Stable Render reference service: `batalla-naval-juego-1` on `main`; it must remain untouched by pilot development.
+- Early historical 2v2 vertical pilot approved to expose multi-ship assumptions before the full 1v1 engine refactor.
+- Side rule fixed: one coherent navy per side; no mixed-national allied teams in this pilot.
+- Selected quartet: **HMS Bellerophon + HMS Conqueror vs Montañés + Bahama**.
+- ADR-0002 allows balance to choose among genuinely documented dated configurations, but forbids synthetic best-of-all-dates ships or arbitrary tuning of historical records.
+- Configuration-envelope research found that the best-balanced supportable set remains the common **19–21 October 1805 / Trafalgar** set.
+- Selected working configurations:
+  - HMS Bellerophon: 28×32-pdr, 28×18-pdr, 18×9-pdr, 2×32-pdr carronades, 6×18-pdr carronades; action complement 522.
+  - HMS Conqueror: 28×32-pdr, 30×18-pdr, 16×9-pdr, 2×32-pdr carronades, 6×18-pdr carronades; action complement 573.
+  - Montañés: 28×36-lb, 30×18-lb, 8×8-lb, 10×30-lb obuses; 76 counted principal combat pieces; complement 749.
+  - Bahama: 28×24-lb, 30×18-lb, 10×8-lb, 6×30-lb obuses, 4×24-lb obuses; 78 counted principal pieces; operational complement 689, with 702 retained as a secondary-source discrepancy.
+- Coarse nominal broadside screen: British pair ≈790.6 kg, Spanish pair ≈800.6 kg, about 1.3% Spanish aggregate edge. This is a research diagnostic, not a combat-value score.
+- Research gate for the **limited first playable 2v2 vertical slice is now CLOSED**. Four sourced technical sheets and a machine-readable implementation data specification exist.
+- Unsupported individual sailing curves, crew-quality modifiers, reload bonuses and structural hit points remain outside the historical data layer. The first pilot may use shared provisional 74-gun mechanics so long as they are not presented as sourced ship characteristics.
+- Current prototype code audit confirms strong one-player/one-AI/one-target assumptions in the monolithic `index.html`: globals `miNavio`, `navioObjetivo`, singular turn resolution, collision, animation, fatigue, targeting and UI paths. A separate limited 2v2 vertical slice is the smallest safe first implementation, while the legacy page remains non-evolving reference code until the later shared-engine refactor.
+
+## Historical research files
+
+- `docs/research/HISTORICAL_SHIPS_2V2_CANDIDATE_SELECTION.md`
+- `docs/research/HISTORICAL_SHIPS_2V2_CONFIGURATION_ENVELOPE.md`
+- `docs/research/HISTORICAL_SHIPS_2V2_DATA_SPEC.md`
+- `docs/research/ships/BELLEROPHON_1805.md`
+- `docs/research/ships/CONQUEROR_1805.md`
+- `docs/research/ships/MONTANES_1805.md`
+- `docs/research/ships/BAHAMA_1805.md`
+- `docs/decisions/ADR-0002-2v2-historical-configuration-balance.md`
 
 ## Branch roles
 
-- `archive/prototype-v1`: immutable historical snapshot of the current prototype; do not develop on this branch.
-- `main`: stable/default branch and discovery entry point. Do not use for normal development.
-- `develop/historical-simulator`: canonical integration branch for the new historical simulator.
-- `feature/*`: short-lived branches for substantial mechanics, architecture, UI, data, or multiplayer work; merge back into the canonical development branch after validation.
-
-Long-term, stable releases from the historical simulator may be promoted to `main` once ready. The archived prototype remains available regardless.
+- `archive/prototype-v1`: immutable prototype snapshot; never develop here.
+- `main`: stable/default and discovery entry point; do not use for normal development.
+- `develop/historical-simulator`: canonical integration branch.
+- `feature/*`: temporary implementation branches, merged back only after validation.
 
 ## Immediate objective
 
-Finish the historical data specification for the selected four 1805 configurations, then execute the first visible vertical pilot: replace generic/approximate ship definitions with sourced historical ship records and add a second ship to each side in a controlled 2v2 development scenario.
+Build the first playable historical 2v2 vertical slice using the frozen 1805 ship records without modifying `main` or the stable Render service.
 
-This pilot must not turn into a general fleet-battle implementation. Its purpose is to validate historical ship data, rendering, ship identity/state, targeting and multi-ship assumptions while preserving existing mechanics as much as practical.
+The pilot must validate:
 
-Detailed plan: `docs/plans/HISTORICAL_SHIPS_2V2_PILOT.md`.
+- four distinct historical ship records;
+- two ships per national side;
+- per-ship movement/damage state;
+- target selection;
+- simultaneous turn resolution;
+- Human side control of both Royal Navy ships;
+- AI control of both Spanish ships;
+- battle completion without state corruption;
+- historically differentiated scale/silhouette derived from source dimensions;
+- clear separation between historical data and provisional pilot mechanics.
 
-**Research gate remains open:** configuration selection is frozen, but do not begin programming until the four ship technical sheets, measurement conventions, provenance and remaining important uncertainties are documented to an acceptable level.
+The pilot is not the final fleet engine. Full command hierarchy, signals, career systems, large battles, final sailing physics and final damage physics remain deferred.
 
 ## Next task
 
-Complete the four selected 1805 technical sheets before code changes:
-
-1. Create one sourced technical sheet each for Bellerophon, Conqueror, Montañés and Bahama, with every field labelled `documented`, `reconstructed`, `estimated` or `unknown`.
-2. Preserve Bellerophon's `action complement` separately from `borne/on-books/muster` values instead of forcing one crew number.
-3. Attach British and Spanish measurement/weight conventions to every dimension/calibre conversion; original historical units remain primary data and SI values derived metadata.
-4. Extract mast/rig/sail evidence from surviving plans where supportable, especially the 1806 Montañés 13-plan set.
-5. Record individual sailing-quality evidence without inventing polar curves or numerical performance not supported by sources.
-6. Finish plan/illustration rights review: Montañés digital plans are CC BY 4.0 with required attribution; Royal Museums Greenwich material needs licensing review before redistribution as game assets.
-7. Record crew composition and training evidence separately from raw headcount; do not assign arbitrary quality tiers merely to balance the scenario.
-8. Once the research gate closes, inspect current code for one-player/one-AI/one-ship assumptions.
-9. Only then create a dedicated `feature/*` branch, implement the smallest safe 2v2 vertical slice, add tests and deploy only to a development Render service.
-
-The mechanics matrix remains required, but it will be expanded incrementally by subsystem rather than blocking all early experimentation.
+1. Create a dedicated feature branch from `develop/historical-simulator`.
+2. Externalize the four selected historical ship records into a data file.
+3. Implement the smallest playable 2v2 vertical slice with one human controller issuing orders to both Royal Navy ships and AI controlling both Spanish ships.
+4. Add automated integrity/simulation tests for four-ship state, targeting and battle completion.
+5. Run local/static validation from repository files.
+6. Deploy only to a new development Render service; leave `batalla-naval-juego-1` untouched.
+7. Perform a manual smoke/playtest and record limitations.
+8. Merge or leave a PR-ready feature branch only after tests and development deployment are healthy.
 
 ## Important decisions
 
-- GitHub is the project source of truth.
-- Old chats are supporting history, not authoritative project state.
-- Velmad v1.2 is a strong baseline, not an immutable canon.
-- Improvements require solid documentary support; intuition alone is insufficient.
-- The first major polished deliverable remains the historical 1v1 simulator.
-- A limited 2v2 development pilot is permitted before that milestone to expose multi-ship assumptions and make the transition to real historical ships visible.
-- Every pilot ship must be a real historical vessel in a dated configuration.
-- Each 2v2 side must be nationally coherent: two vessels from one navy versus two from another.
-- Balance may choose among genuinely documented, internally coherent dated configurations for an individual ship.
-- Historical configuration choice must not become free tuning: no synthetic best-of-all-dates configuration, arbitrary interpolation or use of weak source uncertainty merely because one value is convenient.
-- If one interpretation is materially better supported, evidence takes precedence over balance.
-- The selected pilot configurations are all 19–21 October 1805; this was reached after comparing alternatives, not imposed in advance.
-- Do not alter historical ship characteristics merely to force equality.
-- Do not use raw crew totals as a proxy for crew quality or gunnery effectiveness.
-- Do not directly compare British `tons burthen` with Spanish `arqueo/desplazamiento` as if they were identical measures.
-- No programming until the historical data/specification gate is closed.
-- Preserve the frozen current prototype while the replacement engine is developed and validated.
-- Do not maintain two independently evolving simulator codebases.
-- Major visual redesign remains deferred, but historically differentiated ship scale/silhouette and technical data are in scope for the 2v2 pilot.
+- GitHub is the source of truth.
+- Historical ship records are immutable inputs except when stronger evidence requires correction.
+- Balance operates through sourced ship/configuration selection, not invented ship bonuses.
+- Raw crew count is not a proxy for crew quality or gunnery efficiency.
+- British tons BM and Spanish tonnage/displacement terminology are not directly interchangeable.
+- The first 2v2 pilot may share provisional mechanics across all four 74s where ship-specific numerical evidence is not yet sufficient.
+- Provisional mechanics must be labelled as mechanics, not historical facts.
+- Do not evolve two permanent simulator codebases. The new pilot is a temporary vertical slice used to expose requirements before the later shared simulation-engine refactor; the legacy monolithic page is not to receive parallel feature development.
+- Preserve the frozen prototype and the stable Render service throughout.
 
 ## Explicitly deferred
 
-- full fleet-battle command beyond the limited 2v2 pilot;
-- naval career progression;
-- rank and command auctions;
-- disciplinary/court-martial system;
+- full fleet command beyond 2v2;
+- admiral/division signal systems;
+- career/ranks/auctions;
+- disciplinary/court-martial systems;
 - corsairs and pirates;
-- scheduled large historical multiplayer battles;
+- scheduled large multiplayer battles;
 - forums/community systems;
-- admiral/division signal command;
-- major presentation/UI redesign unrelated to the historical-ship pilot.
-
-## Known reference material
-
-- Velmad — Sea at War / Battles at Sea — Rules v1.2.
-- `docs/research/HISTORICAL_SHIPS_2V2_CANDIDATE_SELECTION.md`.
-- `docs/research/HISTORICAL_SHIPS_2V2_CONFIGURATION_ENVELOPE.md`.
-- `docs/decisions/ADR-0002-2v2-historical-configuration-balance.md`.
-- Digital archaeology/recovery report for Velmad and surviving community sources.
-- Existing `batalla-naval-juego` prototype code, frozen at `archive/prototype-v1`.
-
-Source files should be added to the repository only when licensing/copyright and repository-size considerations are appropriate. Derived research notes must clearly identify provenance.
+- final sailing/impact/damage physics;
+- major presentation redesign unrelated to the pilot.
