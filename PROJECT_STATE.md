@@ -6,13 +6,13 @@ Last updated: 2026-09-18
 
 `develop/historical-simulator`
 
-Active validated feature branch: `feature/historical-2v2-pilot`
+Validated development-deployment branch: `feature/historical-2v2-pilot`
 
 ## Current milestone
 
 **Milestone 1 — Historical 1v1 Simulator**
 
-The Historical 1v1 milestone remains the primary polished goal. The limited historical 2v2 pilot is now a playable validated development slice, not the final fleet engine.
+The Historical 1v1 milestone remains the primary polished goal. The limited historical 2v2 pilot is now a playable validated development slice and regression scenario, not the final fleet engine.
 
 ## Current status
 
@@ -22,6 +22,7 @@ The Historical 1v1 milestone remains the primary polished goal. The limited hist
 - Stable Render reference service `batalla-naval-juego-1` remains on `main` and was not altered.
 - Velmad v1.2 remains the foundational mechanics baseline, subject to evidence-based historical improvement.
 - National-side rule remains fixed: one coherent navy per side; no mixed-national allied teams in this pilot.
+- **PR #1, `Historical 2v2 pilot: playable four-ship vertical slice`, was validated and squash-merged into `develop/historical-simulator` on 2026-09-18.**
 
 ### Historical 2v2 ship set
 
@@ -42,9 +43,9 @@ The research gate for the **limited first playable 2v2 vertical slice is closed*
 
 Four sourced technical sheets and an implementation data specification exist. Unsupported individual sailing curves, crew-quality multipliers, reload bonuses, structural HP and similar values remain outside the historical ship-data layer and are explicitly provisional mechanics.
 
-### Playable implementation
+### Playable implementation now integrated
 
-The feature branch now contains:
+The canonical branch now contains:
 
 - `data/historical_ships_1805.json` — externalized sourced ship records;
 - `src/pilot2v2-core.js` — reusable four-ship pilot simulation core;
@@ -60,13 +61,13 @@ Human control:
 AI control:
 
 - Montañés and Bahama are independently controlled by the pilot AI;
-- AI now closes range, seeks broadside geometry, retains firing solutions and recovers from map boundaries.
+- AI closes range, seeks broadside geometry, retains firing solutions and recovers from map boundaries.
 
 ### Validation
 
-A test added after the first deployment intentionally required an AI-vs-AI engagement to reach a battle result. It exposed a genuine manoeuvre-loop defect: the first AI could remain in combat indefinitely. The failing deployment was not accepted. AI manoeuvring was corrected and the benchmark then passed.
+A battle-completion test exposed a genuine manoeuvre-loop defect in the first AI version. The failing deployment was rejected. AI manoeuvring was corrected and the benchmark then passed.
 
-The validated build subsequently passed:
+The validated build passes:
 
 - historical side coherence;
 - frozen ship-data integrity;
@@ -91,6 +92,7 @@ Dedicated Render service:
 - build command: `npm install && npm test`
 - start command: `npm start`
 - auto-deploy: enabled
+- latest feature-head deployment observed live after all validation/documentation commits.
 
 The deployment is isolated from the stable reference service.
 
@@ -108,7 +110,7 @@ Validation report:
 - Full browser visual automation has not been performed; the build does exercise the page/data through an actual local HTTP server.
 - `npm install` reports 15 inherited dependency vulnerabilities: 2 low, 3 moderate, 9 high and 1 critical. No blind `npm audit fix --force` was applied. Dependency remediation requires a separate controlled pass.
 
-## Historical research files
+## Historical research and validation files
 
 - `docs/research/HISTORICAL_SHIPS_2V2_CANDIDATE_SELECTION.md`
 - `docs/research/HISTORICAL_SHIPS_2V2_CONFIGURATION_ENVELOPE.md`
@@ -119,17 +121,18 @@ Validation report:
 - `docs/research/ships/BAHAMA_1805.md`
 - `docs/decisions/ADR-0002-2v2-historical-configuration-balance.md`
 - `docs/reports/HISTORICAL_2V2_PILOT_PLAYTEST.md`
+- `docs/plans/HISTORICAL_SHIPS_2V2_PILOT.md`
 
 ## Branch roles
 
 - `archive/prototype-v1`: immutable prototype snapshot; never develop here.
 - `main`: stable/default discovery entry point; do not use for normal development.
-- `develop/historical-simulator`: canonical integration branch.
-- `feature/historical-2v2-pilot`: validated implementation branch for this vertical slice; ready for PR/review into the canonical integration branch.
+- `develop/historical-simulator`: canonical integration branch; now includes the validated 2v2 pilot.
+- `feature/historical-2v2-pilot`: retained as the development-deployment branch for the isolated Render pilot service; no longer the source of truth for project state after PR #1 merge.
 
 ## Next task
 
-After integration of the validated pilot, do **not** keep expanding `pilot-2v2.html` into a permanent fleet engine.
+Do **not** keep expanding `pilot-2v2.html` into a permanent fleet engine.
 
 Use the pilot findings to begin the shared historical simulation-engine separation, starting with the subsystem that most affects both 1v1 and multi-ship behavior:
 
@@ -137,7 +140,8 @@ Use the pilot findings to begin the shared historical simulation-engine separati
 2. separate turn/order resolution from the UI;
 3. begin evidence-backed sailing/manoeuvre modeling (wind, sail state, inertia, leeway, tacking/wearing and heel) while retaining a Velmad-comparable baseline mode;
 4. add subsystem tests before replacing provisional pilot constants;
-5. preserve 1v1 as the first polished milestone while retaining the 2v2 pilot as a regression/test scenario.
+5. preserve 1v1 as the first polished milestone while retaining the 2v2 pilot as a regression/test scenario;
+6. perform a controlled dependency-audit/remediation pass before any production promotion.
 
 ## Important decisions
 
@@ -147,7 +151,7 @@ Use the pilot findings to begin the shared historical simulation-engine separati
 - Raw crew count is not a proxy for crew quality or gunnery efficiency.
 - British tons BM and Spanish tonnage/displacement terminology are not directly interchangeable.
 - Provisional mechanics must remain clearly labelled as mechanics, not historical facts.
-- Do not evolve two permanent simulator codebases; use the pilot to expose requirements, then move shared behavior into the common simulation engine.
+- Do not evolve two permanent simulator codebases; use the pilot to expose requirements, then move common behavior into the shared historical simulation engine.
 - Preserve the frozen prototype and stable Render service throughout.
 
 ## Explicitly deferred
