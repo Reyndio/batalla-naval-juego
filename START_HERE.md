@@ -8,6 +8,12 @@ This repository is the canonical source for project state, design decisions, res
 
 Canonical development branch: `develop/historical-simulator`.
 
+Branch roles:
+- `archive/prototype-v1`: immutable snapshot of the original playable prototype. Never use it for normal development.
+- `main`: stable/default branch and discovery entry point through `PROJECT_POINTER.md`.
+- `develop/historical-simulator`: canonical integration branch for the new historical simulator.
+- `feature/*`: temporary branches for substantial isolated work, merged back after validation.
+
 ## Required startup sequence
 
 Before doing project work in a fresh chat or agent session:
@@ -16,7 +22,8 @@ Before doing project work in a fresh chat or agent session:
 2. Read `ROADMAP.md` only as needed for the current task.
 3. Read the relevant files under `docs/` for the task at hand.
 4. Inspect the affected code before changing it.
-5. Do not reconstruct current state from old chats when GitHub contains newer information.
+5. When comparing against the untouched original prototype, use `archive/prototype-v1`.
+6. Do not reconstruct current state from old chats when GitHub contains newer information.
 
 ## Historical simulation principle
 
@@ -52,8 +59,9 @@ Before career systems, auctions, corsairs, pirates, or large multiplayer battles
 
 ## Development discipline
 
-- Preserve the existing prototype until its replacement is validated.
+- Preserve `archive/prototype-v1` as an untouched historical reference.
 - Do not develop directly on `main`.
+- Do not maintain two independently evolving simulator copies; evolve the historical simulator through the canonical branch and use explicit rulesets/configuration when baseline behavior must remain comparable.
 - Use feature branches for substantial changes.
 - Add or update tests for simulation rules.
 - Record durable decisions under `docs/decisions/`.
