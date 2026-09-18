@@ -19,7 +19,9 @@ Last updated: 2026-09-18
 - Startup/recovery workflow established through `PROJECT_POINTER.md` on `main` and `START_HERE.md` on the canonical branch.
 - Velmad v1.2 recovered and adopted as the foundational mechanics baseline.
 - Historical-enhancement policy agreed: improve Velmad mechanics when solid historical, technical, or physical evidence supports a better model.
+- Render connection verified: `batalla-naval-juego-1` is the current functional Node service on `main`; the older `batalla-naval-juego` service is a failed Docker deployment and is not the stable reference.
 - No simulation-engine refactor has started yet.
+- An early visible development pilot has been approved: four real historical ships in a limited 2v2 scenario, with balance achieved through historical ship selection rather than invented stat bonuses.
 
 ## Branch roles
 
@@ -32,31 +34,25 @@ Long-term, stable releases from the historical simulator may be promoted to `mai
 
 ## Immediate objective
 
-Create the complete mechanics inventory and gap analysis before changing simulation behavior.
+Execute the first visible vertical pilot: replace generic/approximate ship definitions with sourced historical ship records and add a second ship to each side in a controlled 2v2 development scenario.
 
-The inventory must compare:
+This pilot must not turn into a general fleet-battle implementation. Its purpose is to validate historical ship data, rendering, ship identity/state, targeting and multi-ship assumptions while preserving the existing mechanics as much as practical.
 
-1. Velmad v1.2 documented mechanics.
-2. Mechanics currently implemented in the existing prototype.
-3. Missing mechanics.
-4. Candidate historical improvements.
-5. Evidence required before changing each mechanic.
+Detailed plan: `docs/plans/HISTORICAL_SHIPS_2V2_PILOT.md`.
 
 ## Next task
 
-Build `docs/rules/MECHANICS_MATRIX.md`, beginning with:
+In a new dedicated chat:
 
-- sailing speed;
-- points of sail;
-- rudder and turn inertia;
-- tacking and wearing;
-- sail states;
-- wind strength and direction;
-- heel;
-- leeway;
-- mast/rigging damage effects on sailing.
+1. Research candidate ships from the 18th or early 19th century.
+2. Select four real vessels with strong source coverage and sufficiently comparable pair composition.
+3. Document dated configurations, dimensions, armament, crew, rig/sailing evidence, history, plans/illustrations and confidence/provenance.
+4. Inspect the current code for one-player/one-AI/one-ship assumptions.
+5. Create a dedicated `feature/*` branch only after the research/specification is sufficiently concrete.
+6. Implement the smallest safe 2v2 vertical slice.
+7. Deploy only to a development Render service, leaving `batalla-naval-juego-1` untouched as the stable reference.
 
-Do not alter gameplay code until this first mechanics inventory is sufficiently complete to define the navigation work.
+The mechanics matrix remains required, but it will now be expanded incrementally by subsystem rather than blocking all early experimentation.
 
 ## Important decisions
 
@@ -64,21 +60,26 @@ Do not alter gameplay code until this first mechanics inventory is sufficiently 
 - Old chats are supporting history, not authoritative project state.
 - Velmad v1.2 is a strong baseline, not an immutable canon.
 - Improvements require solid documentary support; intuition alone is insufficient.
-- The first major playable deliverable is the 1v1 historical simulator, not career/meta systems.
+- The first major polished deliverable remains the historical 1v1 simulator.
+- A limited 2v2 development pilot is permitted before that milestone to expose multi-ship assumptions and make the transition to real historical ships visible.
+- Every pilot ship must be a real historical vessel in a dated configuration.
+- Do not alter historical ship characteristics merely to balance the scenario.
+- If one primary ship is stronger, compensate first through selection of the second historical ship on each side; document any residual asymmetry.
 - Preserve the frozen current prototype while the replacement engine is developed and validated.
 - Do not maintain two independently evolving simulator codebases. Preserve the old executable as an archive; evolve the new simulator on the canonical branch and use explicit rulesets/configuration when baseline-vs-enhanced behavior must remain comparable.
-- Major visual redesign is deferred until core mechanics and damage systems are substantially mature.
+- Major visual redesign remains deferred, but historically differentiated ship scale/silhouette and technical data are in scope for the 2v2 pilot.
 
 ## Explicitly deferred
 
+- full fleet-battle command beyond the limited 2v2 pilot;
 - naval career progression;
 - rank and command auctions;
 - disciplinary/court-martial system;
 - corsairs and pirates;
 - scheduled large historical multiplayer battles;
 - forums/community systems;
-- large-scale fleet command;
-- major presentation/UI redesign.
+- admiral/division signal command;
+- major presentation/UI redesign unrelated to the historical-ship pilot.
 
 ## Known reference material
 
