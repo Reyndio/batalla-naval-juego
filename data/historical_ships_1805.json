@@ -1,0 +1,185 @@
+{
+  "schemaVersion": 1,
+  "scenario": {
+    "id": "trafalgar-plausible-2v2-1805",
+    "label": "Piloto histórico 2v2 — configuraciones de octubre de 1805",
+    "dateContext": "1805-10-21",
+    "historicalStatus": "historically-plausible-development-scenario",
+    "notes": "Los cuatro buques usan configuraciones documentadas de 19–21 octubre de 1805. El enfrentamiento 2v2 no pretende reproducir una acción histórica concreta de Trafalgar."
+  },
+  "ships": [
+    {
+      "id": "bellerophon-1805",
+      "name": "HMS Bellerophon",
+      "nation": "Great Britain",
+      "navy": "Royal Navy",
+      "side": "royal-navy",
+      "configurationDate": "1805-10-21",
+      "rate": "74-gun third-rate two-decker",
+      "launchYear": 1786,
+      "dimensions": {
+        "lengthSource": "168 ft 0 in gun deck",
+        "lengthM": 51.21,
+        "beamSource": "46 ft 10.5 in",
+        "beamM": 14.29,
+        "keelSource": "138 ft 0 in",
+        "depthSource": "19 ft 9 in",
+        "burthenSource": "c. 1612 78/94 tons BM"
+      },
+      "crew": {
+        "actionComplement": 522,
+        "borneOnBooksApprox": 566,
+        "confidence": "reconstructed-medium-high"
+      },
+      "armament": {
+        "principalPieces": 82,
+        "gunsPerBroadside": 41,
+        "fit": [
+          {"count": 28, "type": "long-gun", "calibreLb": 32, "deck": "lower"},
+          {"count": 28, "type": "long-gun", "calibreLb": 18, "deck": "upper"},
+          {"count": 18, "type": "long-gun", "calibreLb": 9, "deck": "upperworks"},
+          {"count": 2, "type": "carronade", "calibreLb": 32, "deck": "upperworks"},
+          {"count": 6, "type": "carronade", "calibreLb": 18, "deck": "upperworks"}
+        ],
+        "broadsideLongKg": 354.3,
+        "broadsideShortKg": 39.0,
+        "shortArmType": "carronade"
+      },
+      "sailingEvidence": "No ship-specific numerical polar frozen for the pilot; common 74-gun provisional sailing baseline is used.",
+      "visual": {"lengthM": 51.21, "beamM": 14.29},
+      "sources": [
+        "https://www.rmg.co.uk/collections/objects/rmgc-object-80933",
+        "https://www.nationalarchives.gov.uk/trafalgarancestors/details.asp?id=3161",
+        "https://www.todoababor.es/historia/batalla-de-trafalgar-21-de-octubre-de-1805/"
+      ],
+      "technicalSheet": "docs/research/ships/BELLEROPHON_1805.md"
+    },
+    {
+      "id": "conqueror-1805",
+      "name": "HMS Conqueror",
+      "nation": "Great Britain",
+      "navy": "Royal Navy",
+      "side": "royal-navy",
+      "configurationDate": "1805-10-21",
+      "rate": "74-gun third-rate two-decker",
+      "launchYear": 1801,
+      "dimensions": {
+        "lengthSource": "176 ft 0 in gun deck",
+        "lengthM": 53.64,
+        "beamSource": "49 ft 2 in",
+        "beamM": 14.99,
+        "keelSource": "144 ft 2 in",
+        "depthSource": "20 ft 9 in",
+        "burthenSource": "c. 1853 69/94 tons BM"
+      },
+      "crew": {"actionComplement": 573, "establishmentApprox": 590, "confidence": "reconstructed-medium-high"},
+      "armament": {
+        "principalPieces": 82,
+        "gunsPerBroadside": 41,
+        "fit": [
+          {"count": 28, "type": "long-gun", "calibreLb": 32, "deck": "lower"},
+          {"count": 30, "type": "long-gun", "calibreLb": 18, "deck": "upper"},
+          {"count": 16, "type": "long-gun", "calibreLb": 9, "deck": "upperworks"},
+          {"count": 2, "type": "carronade", "calibreLb": 32, "deck": "upperworks"},
+          {"count": 6, "type": "carronade", "calibreLb": 18, "deck": "upperworks"}
+        ],
+        "broadsideLongKg": 358.3,
+        "broadsideShortKg": 39.0,
+        "shortArmType": "carronade"
+      },
+      "sailingEvidence": "No ship-specific numerical polar frozen for the pilot; common 74-gun provisional sailing baseline is used.",
+      "visual": {"lengthM": 53.64, "beamM": 14.99},
+      "sources": [
+        "https://www.rmg.co.uk/collections/objects/rmgc-object-80492",
+        "https://www.nationalarchives.gov.uk/trafalgarancestors/details.asp?id=5288",
+        "https://www.todoababor.es/historia/batalla-de-trafalgar-21-de-octubre-de-1805/"
+      ],
+      "technicalSheet": "docs/research/ships/CONQUEROR_1805.md"
+    },
+    {
+      "id": "montanes-1805",
+      "name": "Montañés",
+      "nation": "Spain",
+      "navy": "Real Armada",
+      "side": "real-armada",
+      "configurationDate": "1805-10-19/21",
+      "rate": "74-gun-class two-decker",
+      "launchYear": 1794,
+      "dimensions": {
+        "lengthSource": "190 pies de Burgos (working technical value; 194 preserved as discrepancy)",
+        "lengthM": 52.94,
+        "beamSource": "51 pies de Burgos",
+        "beamM": 14.21,
+        "keelSource": "169 pies 6 pulgadas de Burgos",
+        "depthSource": "25 pies 6 pulgadas de Burgos",
+        "tonnageSource": "1499 tons in Spanish Defence synthesis"
+      },
+      "crew": {"actionComplement": 749, "confidence": "documented-reconstructed-high"},
+      "armament": {
+        "principalPieces": 76,
+        "gunsPerBroadside": 38,
+        "fit": [
+          {"count": 28, "type": "long-gun", "calibreLb": 36, "deck": "lower"},
+          {"count": 30, "type": "long-gun", "calibreLb": 18, "deck": "upper"},
+          {"count": 8, "type": "long-gun", "calibreLb": 8, "deck": "upperworks"},
+          {"count": 10, "type": "obus", "calibreLb": 30, "deck": "upperworks"}
+        ],
+        "broadsideLongKg": 370.8,
+        "broadsideShortKg": 69.0,
+        "shortArmType": "obus"
+      },
+      "sailingEvidence": "Spanish sources report the ship as very fast, manoeuvrable and stable in trials; no numerical bonus is inferred in this pilot.",
+      "visual": {"lengthM": 52.94, "beamM": 14.21},
+      "sources": [
+        "https://bibliotecavirtual.defensa.gob.es/BVMDefensa/en/consulta/registro.do?id=1016834",
+        "https://bibliotecavirtual.defensa.gob.es/BVMDefensa/en/consulta/registro.do?id=1016966",
+        "https://www.defensa.gob.es/Galerias/documentacion/revistas/2005/trafalgar.pdf",
+        "https://www.todoababor.es/datos_docum/arm_nav_traf_vent.htm"
+      ],
+      "licenseNote": "Montañés digital plan set: CC BY 4.0; attribution required to Archivo Histórico de la Armada Juan Sebastián de Elcano / Biblioteca Virtual de Defensa.",
+      "technicalSheet": "docs/research/ships/MONTANES_1805.md"
+    },
+    {
+      "id": "bahama-1805",
+      "name": "Bahama",
+      "nation": "Spain",
+      "navy": "Real Armada",
+      "side": "real-armada",
+      "configurationDate": "1805-10-19/21",
+      "rate": "74-gun-class two-decker",
+      "launchYear": 1783,
+      "dimensions": {
+        "lengthSource": "190 pies de Burgos",
+        "lengthM": 52.94,
+        "beamSource": "51 pies de Burgos",
+        "beamM": 14.21,
+        "keelSource": "165 pies de Burgos",
+        "depthSource": "24 pies de Burgos",
+        "tonnageSource": "1696 tons in Spanish Defence synthesis"
+      },
+      "crew": {"actionComplement": 689, "alternateSecondary": 702, "confidence": "reconstructed-medium-high"},
+      "armament": {
+        "principalPieces": 78,
+        "gunsPerBroadside": 39,
+        "fit": [
+          {"count": 28, "type": "long-gun", "calibreLb": 24, "deck": "lower"},
+          {"count": 30, "type": "long-gun", "calibreLb": 18, "deck": "upper"},
+          {"count": 10, "type": "long-gun", "calibreLb": 8, "deck": "upperworks"},
+          {"count": 6, "type": "obus", "calibreLb": 30, "deck": "upperworks"},
+          {"count": 4, "type": "obus", "calibreLb": 24, "deck": "upperworks"}
+        ],
+        "broadsideLongKg": 297.2,
+        "broadsideShortKg": 63.5,
+        "shortArmType": "obus"
+      },
+      "sailingEvidence": "Qualitative sailing evidence exists; no ship-specific numerical polar or hidden bonus is used in this pilot.",
+      "visual": {"lengthM": 52.94, "beamM": 14.21},
+      "sources": [
+        "https://www.defensa.gob.es/Galerias/documentacion/revistas/2005/trafalgar.pdf",
+        "https://www.rmg.co.uk/collections/objects/rmgc-object-80557",
+        "https://www.todoababor.es/datos_docum/arm_nav_traf_vent.htm"
+      ],
+      "technicalSheet": "docs/research/ships/BAHAMA_1805.md"
+    }
+  ]
+}
