@@ -11,8 +11,9 @@
   const MAX_FIRE_RANGE = 450;
   const BASE_HULL = 1200;
   const BASE_RIG = 800;
+  const MAX_RUDDER = 4;
   const SAIL_SPEED = { NV: 0, PV: 14, MV: 25, TV: 34 };
-  const RUDDER_DEG_PER_POINT = 10;
+  const RUDDER_DEG_PER_POINT = 8;
   const RUDDER_SAIL_FACTOR = { NV: 0.8, PV: 1.0, MV: 0.82, TV: 0.62 };
 
   function clone(v) { return JSON.parse(JSON.stringify(v)); }
@@ -48,6 +49,9 @@
       sail: ship.sail || 'MV',
       rudder: 0,
       fire: false,
+      fireBand: 'AUTO',
+      fireSection: 'AUTO',
+      ammo: 'ROUND_SHOT',
       aim: 'HULL',
       targetId: enemyId || null
     };
@@ -95,6 +99,7 @@
         initialCrew: historical.crew.actionComplement,
         sunk: false,
         disabled: false,
+        confirmed: false,
         lastTargetId: null,
         order: null
       };
@@ -154,9 +159,10 @@
   }
 
   function projectMovement(state, ship, order) {
-    if (ship.sunk) return { x: ship.x, y: ship.y, heading: ship.heading };
+    if (ship.sunk) return { x: ship.x, y: ship.y, heading: ship.heading, sail: ship.sail, rudder: ship.rudder };
+    order = order || defaultOrder(ship, null);
     const sail = order.sail || ship.sail;
-    const rudder = clamp(Number(order.rudder) || 0, -2, 2);
+    const rudder = clamp(Number(order.rudder) || 0, -MAX_RUDDER, MAX_RUDDER);
     const turn = rudder * RUDDER_DEG_PER_POINT * (RUDDER_SAIL_FACTOR[sail] || 1);
     const newHeading = normalizeAngle(ship.heading + turn);
     const avgHeading = normalizeAngle(ship.heading + turn / 2);
@@ -170,11 +176,17 @@
 
   function broadsideArcFactor(attacker, target) {
     const r = relativeBearing(attacker, target);
-    const full = (r >= 65 && r <= 115) || (r >= 245 && r <= 295);
-    if (full) return { factor: 1, bearing: r, band: r < 180 ? 'ESTRIBOR' : 'BABOR' };
-    const partial = (r >= 45 && r <= 135) || (r >= 225 && r <= 315);
-    if (partial) return { factor: 0.6, bearing: r, band: r < 180 ? 'ESTRIBOR' : 'BABOR' };
-    return { factor: 0, bearing: r, band: null };
+    const fullStarboard = r >= 65 && r <= 115;
+    const fullPort = r >= 245 && r <= 295;
+    if (fullStarboard || fullPort) {
+      return { factor: 1, bearing: r, band: r < 180 ? 'ESTRIBOR' : 'BABOR', section: 'COMPLETA' };
+    }
+
+    if (r >= 45 && r < 65) return { factor: 0.6, bearing: r, band: 'ESTRIBOR', section: 'PROA' };
+    if (r > 115 && r <= 135) return { factor: 0.6, bearing: r, band: 'ESTRIBOR', section: 'POPA' };
+    if (r >= 295 && r <= 315) return { factor: 0.6, bearing: r, band: 'BABOR', section: 'PROA' };
+    if (r >= 225 && r < 245) return { factor: 0.6, bearing: r, band: 'BABOR', section: 'POPA' };
+    return { factor: 0, bearing: r, band: null, section: null };
   }
 
   function rangeFactor(range) {
@@ -187,6 +199,7 @@
 
   function rudderTowardHeading(ship, desiredHeading) {
     const err = angleDiff(desiredHeading, ship.heading);
+    if (Math.abs(err) > 70) return err > 0 ? 4 : -4;
     if (Math.abs(err) > 35) return err > 0 ? 2 : -2;
     if (Math.abs(err) > 10) return err > 0 ? 1 : -1;
     return 0;
@@ -202,8 +215,6 @@
     const arc = broadsideArcFactor(ship, target);
     let desiredHeading;
 
-    // First close the range. Once in an effective engagement envelope, seek the
-    // nearer of the two headings that places the target roughly abeam.
     if (d > 320) {
       desiredHeading = bearing;
     } else {
@@ -218,12 +229,8 @@
     if (d > 390) sail = 'TV';
     else if (d < 120) sail = 'PV';
 
-    // When a usable broadside already exists, reduce helm changes to keep the
-    // firing solution instead of endlessly circling past it.
     let rudder = arc.factor > 0 && d <= 300 ? 0 : rudderTowardHeading(ship, desiredHeading);
 
-    // Boundary recovery prevents an AI ship from remaining pinned against the
-    // world edge while its target is elsewhere.
     if (ship.x < 55 || ship.x > WORLD.width - 55 || ship.y < 55 || ship.y > WORLD.height - 55) {
       const centerHeading = angleTo(ship, { x: WORLD.width / 2, y: WORLD.height / 2 });
       rudder = rudderTowardHeading(ship, centerHeading);
@@ -236,6 +243,9 @@
       sail,
       rudder,
       fire,
+      fireBand: currentArc.band || 'AUTO',
+      fireSection: 'AUTO',
+      ammo: 'ROUND_SHOT',
       aim: target.rig > target.maxRig * 0.55 ? 'HULL' : 'RIGGING',
       targetId: target.id
     };
@@ -267,6 +277,7 @@
       state.log.push(`${attacker.name}: disparo cancelado; objetivo no disponible.`);
       return;
     }
+
     const d = distance(attacker, target);
     const arc = broadsideArcFactor(attacker, target);
     const rf = rangeFactor(d);
@@ -275,14 +286,41 @@
       return;
     }
 
-    // Conservative pilot formula: only documented long-gun broadside mass drives damage.
-    // Carronades and Spanish obuses remain separate historical data, not equivalents.
+    const requestedBand = order.fireBand || 'AUTO';
+    if (requestedBand !== 'AUTO' && requestedBand !== arc.band) {
+      state.log.push(`${attacker.name}: orden de ${requestedBand.toLowerCase()} sin arco sobre ${target.name}.`);
+      return;
+    }
+
+    const requestedSection = order.fireSection || 'AUTO';
+    let sectionFactor = arc.factor;
+    if (requestedSection === 'COMPLETA' && arc.section !== 'COMPLETA') {
+      state.log.push(`${attacker.name}: batería completa sin solución; ${target.name} está en ${arc.section || 'ninguna sección'}.`);
+      return;
+    }
+    if (requestedSection === 'PROA' || requestedSection === 'POPA') {
+      if (arc.section === 'COMPLETA') sectionFactor = 0.6;
+      else if (arc.section !== requestedSection) {
+        state.log.push(`${attacker.name}: sección ${requestedSection.toLowerCase()} sin solución sobre ${target.name}.`);
+        return;
+      }
+    }
+
     const longKg = attacker.historical.armament.broadsideLongKg;
     const spread = 0.86 + (rng ? rng() : Math.random()) * 0.28;
-    const raw = longKg * 0.38 * rf * arc.factor * spread;
+    let raw = longKg * 0.38 * rf * sectionFactor * spread;
+    const ammo = order.ammo || 'ROUND_SHOT';
+    const aim = order.aim || 'HULL';
+
+    // These modifiers preserve the old prototype's provisional ammunition distinctions.
+    // They remain legacy mechanics, not finalized historical ballistics.
+    if (ammo === 'DOUBLE_SHOT' && aim === 'RIGGING') raw *= 1.5;
+    if (ammo === 'GRAPE' && aim === 'HULL') raw *= 0.5;
+    if (ammo === 'GRAPE' && aim === 'RIGGING') raw *= 0.75;
+
     let hullDamage = 0;
     let rigDamage = 0;
-    if ((order.aim || 'HULL') === 'RIGGING') {
+    if (aim === 'RIGGING') {
       rigDamage = Math.round(raw * 0.9);
       hullDamage = Math.round(raw * 0.12);
     } else {
@@ -292,12 +330,14 @@
 
     target.hull = Math.max(0, target.hull - hullDamage);
     target.rig = Math.max(0, target.rig - rigDamage);
-    const casualtyRate = d < 150 ? 0.03 : 0.018;
+    let casualtyRate = d < 150 ? 0.03 : 0.018;
+    if (ammo === 'GRAPE') casualtyRate *= 2.25;
     const casualties = Math.min(target.crew, Math.max(0, Math.round((hullDamage + rigDamage * 0.4) * casualtyRate)));
     target.crew -= casualties;
     attacker.lastTargetId = target.id;
 
-    state.log.push(`${attacker.name} dispara ${arc.band} sobre ${target.name} a ${Math.round(d)} m: casco -${hullDamage}, aparejo -${rigDamage}, bajas ${casualties}.`);
+    const ammoLabel = ammo === 'DOUBLE_SHOT' ? 'doble bala' : ammo === 'GRAPE' ? 'metralla' : 'bala redonda';
+    state.log.push(`${attacker.name} dispara ${arc.band} (${arc.section}) con ${ammoLabel} sobre ${target.name} a ${Math.round(d)} m: casco -${hullDamage}, aparejo -${rigDamage}, bajas ${casualties}.`);
     if (target.hull <= 0 && !target.sunk) {
       target.sunk = true;
       state.log.push(`¡${target.name} queda fuera de combate y se hunde en este modelo piloto!`);
@@ -347,6 +387,7 @@
 
     evaluateResult(state);
     state.turn += 1;
+    for (const ship of state.ships) ship.confirmed = false;
     if (!state.result) {
       for (const ship of state.ships) {
         if (!ship.sunk && autoSides.includes(ship.side)) ship.order = planAIOrder(state, ship);
@@ -385,13 +426,17 @@
     MAX_FIRE_RANGE,
     BASE_HULL,
     BASE_RIG,
+    MAX_RUDDER,
+    SAIL_SPEED,
     buildInitialState,
+    defaultOrder,
     livingShips,
     nearestEnemy,
     distance,
     angleTo,
     relativeBearing,
     broadsideArcFactor,
+    projectMovement,
     planAIOrder,
     autoOrderSide,
     resolveTurn,
