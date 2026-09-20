@@ -55,7 +55,7 @@
     .cmd-row button { flex: 1 1 auto; min-width: 34px; }
     .cmd-button.current { background: var(--blue); border-color: var(--blue2); color: white; }
     .cmd-button.ordered { background: var(--gold); border: 2px solid var(--gold2); color: #1f2937; box-shadow: 0 0 8px rgba(251,191,36,.55); }
-    .cmd-button.fire-active { border: 2px solid #f6e05e; box-shadow: 0 0 7px rgba(246,224,94,.7); }
+    .cmd-button.fire-active, .fire-row button.fire-active { background: #9b2c2c; border: 2px solid #fc8181; color: #fff; box-shadow: 0 0 10px rgba(248,113,113,.9); }
     .fire-row button { min-width: 76px; }
     .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; }
     .action-row { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; margin-top: 9px; }
@@ -65,12 +65,13 @@
     .resolve { background: #8a5d13; }
     .danger { background: #742a2a; }
     .small { font-size: 11px; color: #a9bbcc; line-height: 1.4; }
-    .legend-box { position: absolute; left: 10px; top: 10px; z-index: 4; background: rgba(15,23,32,.86); border: 1px solid rgba(160,174,192,.55); border-radius: 6px; padding: 7px 9px; font-size: 11px; pointer-events: none; max-width: 340px; }
+    .legend-box { position: absolute; left: 10px; top: 10px; z-index: 4; background: rgba(15,23,32,.86); border: 1px solid rgba(160,174,192,.55); border-radius: 6px; padding: 7px 9px; font-size: 11px; pointer-events: none; max-width: 390px; }
     #tacticalOverlay { position: absolute; left: 10px; bottom: 10px; z-index: 4; background: rgba(15,23,32,.88); border: 1px solid rgba(160,174,192,.55); border-radius: 6px; padding: 7px 9px; font-size: 12px; pointer-events: none; min-width: 240px; }
     #cameraTools { position: absolute; right: 10px; top: 10px; z-index: 5; display: grid; grid-template-columns: repeat(2, auto); gap: 4px; }
     #cameraTools button { padding: 6px 8px; font-size: 11px; background: rgba(15,23,32,.9); }
     .ship-card { background: #1a202c; border: 1px solid #4a5568; border-radius: 7px; padding: 8px; margin-bottom: 7px; }
     .ship-card.selected { border-color: #f6e05e; box-shadow: 0 0 0 1px #f6e05e inset; }
+    .ship-card.target-card, .ship-card.threat-card { border-color: #fc8181; box-shadow: 0 0 0 1px #fc8181 inset, 0 0 10px rgba(248,113,113,.45); }
     .ship-card.sunk { opacity: .5; }
     .ship-title { display: flex; justify-content: space-between; gap: 8px; font-weight: 700; }
     .info-line { display: flex; justify-content: space-between; gap: 8px; font-size: 11px; margin-top: 3px; }
@@ -87,6 +88,12 @@
     .status-good { color:#9ae6b4; }
     .status-warn { color:#f6e05e; }
     .status-bad { color:#feb2b2; }
+    .tactical-ring { position:absolute; z-index:6; pointer-events:none; border-radius:50%; border:3px solid #ff4d4d; box-shadow:0 0 12px rgba(255,77,77,.95), inset 0 0 10px rgba(255,77,77,.25); }
+    .tactical-ring::after { content:attr(data-label); position:absolute; left:50%; top:-20px; transform:translateX(-50%); color:#fff; background:rgba(127,29,29,.92); border:1px solid #ff8a8a; border-radius:4px; padding:1px 5px; font:700 10px "Segoe UI",sans-serif; white-space:nowrap; }
+    .threat-ring { border-style:dashed; animation:threatPulse .8s ease-in-out infinite alternate; }
+    .battery-side-highlight { position:absolute; z-index:7; pointer-events:none; width:5px; border-radius:999px; background:#ff3535; box-shadow:0 0 9px rgba(255,53,53,1); }
+    .battery-side-highlight::after { content:attr(data-band); position:absolute; left:8px; top:50%; transform:translateY(-50%); color:#fff; background:rgba(127,29,29,.92); border-radius:3px; padding:1px 4px; font:700 9px "Segoe UI",sans-serif; white-space:nowrap; }
+    @keyframes threatPulse { from { opacity:.55; } to { opacity:1; } }
     @media (max-width: 1200px) {
       #app { grid-template-columns: 320px minmax(480px,1fr); grid-template-areas: "header header" "left main" "right right" "footer footer"; overflow: auto; }
       body { overflow: auto; }
