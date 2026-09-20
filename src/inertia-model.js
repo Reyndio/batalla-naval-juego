@@ -42,13 +42,18 @@
     return RESPONSE_BY_CLASS[cls] == null ? RESPONSE_BY_CLASS[3] : RESPONSE_BY_CLASS[cls];
   }
 
+  function collisionRetentionFor(ship) {
+    if (!ship || !ship.collidedThisTurn) return 1;
+    if (Number.isFinite(ship.collisionMomentumRetention)) return clamp(ship.collisionMomentumRetention, 0, 1);
+    return COLLISION_MOMENTUM_RETAINED;
+  }
+
   function retainedMotion(ship, fallback) {
+    if (ship && ship.entangledWith) return { x: 0, y: 0 };
     let old = finiteVector(ship.motionVx, ship.motionVy) || fallback || { x: 0, y: 0 };
-    if (ship.collidedThisTurn) {
-      old = {
-        x: old.x * COLLISION_MOMENTUM_RETAINED,
-        y: old.y * COLLISION_MOMENTUM_RETAINED
-      };
+    const retention = collisionRetentionFor(ship);
+    if (retention !== 1) {
+      old = { x: old.x * retention, y: old.y * retention };
     }
     return old;
   }
@@ -79,6 +84,10 @@
 
   function seedShipMotion(state, ship) {
     if (!ship || !baseProjectMovement) return;
+    if (ship.entangledWith) {
+      ship.motionVx = 0; ship.motionVy = 0; ship.motionSpeed = 0; ship.motionSeeded = true;
+      return;
+    }
     const neutralOrder = {
       ...(ship.order || {}),
       sail: ship.sail,
@@ -104,6 +113,20 @@
   function inertialProjection(state, ship, order, options) {
     const commanded = baseProjectMovement(state, ship, order, options);
     if (!ship || ship.sunk || ship.sinking || ship.disabled) return commanded;
+    if (ship.entangledWith) {
+      const zero = { x: 0, y: 0 };
+      return {
+        ...commanded,
+        x: ship.x,
+        y: ship.y,
+        inertia: {
+          response: responseFor(ship), oldVelocity: zero, commandedVelocity: zero, nextVelocity: zero, displacement: zero,
+          oldSpeed: 0, commandedSpeed: 0, nextSpeed: 0, movementSpeed: 0
+        },
+        commandedX: ship.x,
+        commandedY: ship.y
+      };
+    }
     const commandVelocity = { x: commanded.x - ship.x, y: commanded.y - ship.y };
     const oldVelocity = retainedMotion(ship, commandVelocity);
     const motion = blendVelocity(ship, oldVelocity, commandVelocity);
@@ -144,7 +167,9 @@
         x: ship.x,
         y: ship.y,
         oldVelocity: retainedMotion(ship, fallback),
-        wasActive: !ship.sunk && !ship.sinking && !ship.disabled
+        wasActive: !ship.sunk && !ship.sinking && !ship.disabled,
+        wasEntangled: !!ship.entangledWith,
+        hadCollision: !!ship.collidedThisTurn
       });
     }
 
@@ -159,6 +184,19 @@
         ship.motionVx = 0;
         ship.motionVy = 0;
         ship.motionSpeed = 0;
+        if (start.hadCollision) ship.collisionMomentumRetention = null;
+        continue;
+      }
+
+      if (start.wasEntangled || ship.entangledWith) {
+        ship.x = start.x;
+        ship.y = start.y;
+        ship.motionVx = 0;
+        ship.motionVy = 0;
+        ship.motionSpeed = 0;
+        ship.lastCommandedSpeed = 0;
+        ship.lastInertialDisplacement = 0;
+        if (start.hadCollision) ship.collisionMomentumRetention = null;
         continue;
       }
 
@@ -171,6 +209,7 @@
       ship.motionSpeed = motion.nextSpeed;
       ship.lastCommandedSpeed = motion.commandedSpeed;
       ship.lastInertialDisplacement = motion.movementSpeed;
+      if (start.hadCollision) ship.collisionMomentumRetention = null;
     }
     return result;
   }
@@ -200,6 +239,8 @@
     RESPONSE_BY_CLASS,
     COLLISION_MOMENTUM_RETAINED,
     responseFor,
+    collisionRetentionFor,
+    retainedMotion,
     blendVelocity,
     seedShipMotion,
     seedStateMotion,
