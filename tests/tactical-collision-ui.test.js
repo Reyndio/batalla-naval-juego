@@ -136,11 +136,49 @@ test('full-sail firing risk is 20 percent baseline and 30 percent when wind ente
   assert.equal(Combat.fullSailFireRisk(0, 270, 'BABOR'), 0.30);
 });
 
+test('an actual logged full-sail broadside can ignite level-one fire using the correct risk', () => {
+  const state = Core.buildInitialState(data, { windFromDeg: 90 });
+  const ship = state.ships[0];
+  Combat.initializeShipCombatState(ship);
+  const snapshot = {
+    id: ship.id,
+    name: ship.name,
+    sail: 'TV',
+    heading: 0,
+    windFromDeg: 90,
+    order: { fire: true, fireBand: 'ESTRIBOR' }
+  };
+  const outcome = Combat.applyFullSailIgnition(state, snapshot, [`${ship.name} dispara ESTRIBOR (COMPLETA)`], () => 0.299999);
+  assert.equal(outcome.checked, true);
+  assert.equal(outcome.chance, 0.30);
+  assert.equal(outcome.ignited, true);
+  assert.equal(ship.fireLevel, 1);
+  assert.equal(ship.onFire, true);
+});
+
+test('full-sail ignition is not rolled when no broadside actually fired', () => {
+  const state = Core.buildInitialState(data, { windFromDeg: 90 });
+  const ship = state.ships[0];
+  Combat.initializeShipCombatState(ship);
+  const snapshot = {
+    id: ship.id,
+    name: ship.name,
+    sail: 'TV',
+    heading: 0,
+    windFromDeg: 90,
+    order: { fire: true, fireBand: 'ESTRIBOR' }
+  };
+  const outcome = Combat.applyFullSailIgnition(state, snapshot, ['sin solución de tiro'], () => 0);
+  assert.equal(outcome.checked, false);
+  assert.equal(ship.fireLevel, 0);
+});
+
 test('playable page wires swept collision guard tactical overlays prototype rudder and combat privacy UI', () => {
   const html = read('pilot-2v2.html');
   const css = read('pilot-2v2.css');
   const polish = read('src/player-ui-polish.js');
   const combatUi = read('src/combat-ui-rules.js');
+  assert.doesNotThrow(() => new Function(combatUi), 'combat-ui-rules.js must parse as browser JavaScript');
   assert.match(html, /src\/collision-guard\.js/);
   assert.match(html, /src\/prototype-rudder-runtime\.js/);
   assert.match(html, /src\/combat-rules\.js/);
