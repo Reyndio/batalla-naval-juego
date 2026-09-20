@@ -19,6 +19,7 @@
   const VELMAD_CLASS_SPEED_FACTOR = { 1: 0.80, 2: 0.90, 3: 1.00, 4: 1.10, 5: 1.20, 6: 1.25 };
   const VELMAD_CLASS_TWO_POINT_CHANCE = { 1: 0.25, 2: 0.50, 3: 0.75, 4: 1.00, 5: 1.00, 6: 1.00 };
 
+  const FATIGUE_PER_SAIL_POINT = 10;
   const FATIGUE_ACTION = 30;
   const FATIGUE_NV_PV = 20;
   const FATIGUE_RECOVERY = 10;
@@ -26,7 +27,6 @@
   const FATIGUE_ONE_BROADSIDE = 10;
   const FATIGUE_BOTH_BROADSIDES = 30;
   const FATIGUE_MAKE_FULL_SAIL = 30;
-  // Project reconstruction decision: direct TV<->NV uses 30/30. The v1.2 English PDF contains a conflicting 40% line.
   const FATIGUE_COLLECT_ALL_SAIL = 30;
   const FATIGUE_DOUBLE_SHOT_RELOAD = 10;
   const FATIGUE_PUMP_HULL = 20;
@@ -98,11 +98,10 @@
   function broadsideFatigueCost(count) { return count >= 2 ? FATIGUE_BOTH_BROADSIDES : count === 1 ? FATIGUE_ONE_BROADSIDE : 0; }
   function collisionFatigueCost(sail) { return FATIGUE_COLLISION[sail] == null ? 0 : FATIGUE_COLLISION[sail]; }
   function sailChangeFatigueCost(fromSail, toSail) {
-    if (fromSail === toSail) return 0;
-    if (fromSail === 'TV' && toSail === 'NV') return FATIGUE_COLLECT_ALL_SAIL;
-    if (toSail === 'TV') return FATIGUE_MAKE_FULL_SAIL;
-    if (fromSail === 'NV' && (toSail === 'PV' || toSail === 'MV')) return FATIGUE_NV_PV;
-    return 0;
+    const from = SAIL_ORDER.indexOf(fromSail);
+    const to = SAIL_ORDER.indexOf(toSail);
+    if (from < 0 || to < 0) return 0;
+    return Math.abs(to - from) * FATIGUE_PER_SAIL_POINT;
   }
   function recoverFatigue(ship) {
     const recovery = ship.fatigue > 80 ? FATIGUE_RECOVERY_HIGH : FATIGUE_RECOVERY;
@@ -487,7 +486,7 @@
       if(rudderButtons.previousElementSibling)rudderButtons.previousElementSibling.textContent='Timón Velmad — 1 punto = 15° · T = 2 puntos';
     }
     const panel=doc.getElementById('leftPanel'); if(!panel || doc.getElementById('velmadDamageControl')) return;
-    const box=doc.createElement('section'); box.id='velmadDamageControl'; box.innerHTML='<h3>Acciones Velmad</h3><div id="velmadHullState" class="small">Casco: —</div><button id="pumpHullAction" style="width:100%;margin-top:6px">Bombear/reparar casco 0→1 (+20% fatiga)</button><div class="two-col" style="margin-top:6px"><button id="velmadNoSail">TV→NV directo (+30%)</button><button id="velmadFullSail">NV→TV directo (+30%)</button></div><div class="small" style="margin-top:4px">Reconstrucción jugable 30/30 sólo para la transición directa entre los extremos NV↔TV; el PDF inglés v1.2 conserva una línea conflictiva de 40%.</div>';
+    const box=doc.createElement('section'); box.id='velmadDamageControl'; box.innerHTML='<h3>Acciones Velmad</h3><div id="velmadHullState" class="small">Casco: —</div><button id="pumpHullAction" style="width:100%;margin-top:6px">Bombear/reparar casco 0→1 (+20% fatiga)</button><div class="two-col" style="margin-top:6px"><button id="velmadNoSail">TV→NV directo (+30%)</button><button id="velmadFullSail">NV→TV directo (+30%)</button></div><div class="small" style="margin-top:4px">Regla de proyecto: cada punto de velamen NV↔PV↔MV↔TV cuesta +10% de fatiga; los saltos directos acumulan 20% o 30%.</div>';
     panel.appendChild(box); const button=box.querySelector('#pumpHullAction'), status=box.querySelector('#velmadHullState'), noSailButton=box.querySelector('#velmadNoSail'), fullSailButton=box.querySelector('#velmadFullSail');
     noSailButton.addEventListener('click',()=>orderSelectedExtremeSail('NV'));
     fullSailButton.addEventListener('click',()=>orderSelectedExtremeSail('TV'));
@@ -500,7 +499,7 @@
   return {
     SIDE_ROYAL_NAVY,SIDE_REAL_ARMADA,WORLD,MAX_FIRE_RANGE,BASE_HULL,BASE_RIG,MAX_RUDDER,RUDDER_POINT_DEG,SAIL_SPEED,SAIL_ORDER,
     VELMAD_CLASS_SPEED_FACTOR,VELMAD_CLASS_TWO_POINT_CHANCE,
-    FATIGUE_ACTION,FATIGUE_NV_PV,FATIGUE_RECOVERY,FATIGUE_RECOVERY_HIGH,FATIGUE_ONE_BROADSIDE,FATIGUE_BOTH_BROADSIDES,FATIGUE_MAKE_FULL_SAIL,FATIGUE_COLLECT_ALL_SAIL,FATIGUE_DOUBLE_SHOT_RELOAD,FATIGUE_PUMP_HULL,FATIGUE_COLLISION,
+    FATIGUE_PER_SAIL_POINT,FATIGUE_ACTION,FATIGUE_NV_PV,FATIGUE_RECOVERY,FATIGUE_RECOVERY_HIGH,FATIGUE_ONE_BROADSIDE,FATIGUE_BOTH_BROADSIDES,FATIGUE_MAKE_FULL_SAIL,FATIGUE_COLLECT_ALL_SAIL,FATIGUE_DOUBLE_SHOT_RELOAD,FATIGUE_PUMP_HULL,FATIGUE_COLLISION,
     HULL_ZERO_SINKING_CHANCE,HULL_ZERO_ONE_SPEED_CAP,CREW_QUALITY,
     buildInitialState,startBattle,livingShips,nearestEnemy,distance,angleTo,relativeBearing,broadsideArcFactor,validateRudderOrder,resolveRudderOrder,projectMovement,planAIOrder,autoOrderSide,
     resolveShot,resolveTurn,evaluateResult,updateSpeedEfficiency,fatigueEfficiency,crewQualityProfile,canShipFire,broadsideFatigueCost,collisionFatigueCost,sailChangeFatigueCost,recoverFatigue,
