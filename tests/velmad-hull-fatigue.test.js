@@ -76,11 +76,15 @@ test('Velmad broadside and collision fatigue costs are exact', () => {
   assert.equal(Core.collisionFatigueCost('NV'), 0);
 });
 
-test('sail fatigue uses the documented values plus the explicit 30/30 extreme reconstruction', () => {
+test('sail fatigue keeps explicit values while 30/30 applies only to the direct extreme reconstruction', () => {
   assert.equal(Core.sailChangeFatigueCost('MV', 'TV'), 30);
+  assert.equal(Core.sailChangeFatigueCost('PV', 'TV'), 30);
   assert.equal(Core.sailChangeFatigueCost('NV', 'TV'), 30);
   assert.equal(Core.sailChangeFatigueCost('TV', 'NV'), 30);
+  assert.equal(Core.sailChangeFatigueCost('PV', 'NV'), 0);
+  assert.equal(Core.sailChangeFatigueCost('MV', 'NV'), 0);
   assert.equal(Core.sailChangeFatigueCost('NV', 'PV'), 20);
+  assert.equal(Core.sailChangeFatigueCost('NV', 'MV'), 20);
 
   const ship = freshShip();
   ship.fatigue = 80;
@@ -89,6 +93,21 @@ test('sail fatigue uses the documented values plus the explicit 30/30 extreme re
   ship.fatigue = 81;
   Core.recoverFatigue(ship);
   assert.equal(ship.fatigue, 61);
+});
+
+test('PV to NV is an ordinary reduction, not the reconstructed TV to NV +30 extreme action', () => {
+  const state = Core.buildInitialState(data);
+  const ship = state.ships[0];
+  ship.sail = 'PV';
+  ship.effectiveSail = 'PV';
+  ship.fatigue = 50;
+  ship.order = { ...ship.order, sail: 'NV', rudder: 0, fire: false, reloadDoubleShot: false, fireFighting: false, cutMast: false };
+  for (const other of state.ships.slice(1)) {
+    other.order = { ...other.order, sail: other.sail, rudder: 0, fire: false, reloadDoubleShot: false, fireFighting: false, cutMast: false };
+  }
+  Core.resolveTurn(state, { rng: () => 0.5, autoSides: [] });
+  assert.equal(ship.sail, 'NV');
+  assert.equal(ship.fatigue, 40);
 });
 
 test('all four Velmad crew-quality firing penalties and firing fatigue limits are represented', () => {
