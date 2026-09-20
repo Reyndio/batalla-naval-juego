@@ -76,9 +76,10 @@ test('Velmad broadside and collision fatigue costs are exact', () => {
   assert.equal(Core.collisionFatigueCost('NV'), 0);
 });
 
-test('Velmad unambiguous sail fatigue costs and idle recovery are exact', () => {
+test('sail fatigue uses the documented values plus the explicit 30/30 extreme reconstruction', () => {
   assert.equal(Core.sailChangeFatigueCost('MV', 'TV'), 30);
-  assert.equal(Core.sailChangeFatigueCost('MV', 'NV'), 40);
+  assert.equal(Core.sailChangeFatigueCost('NV', 'TV'), 30);
+  assert.equal(Core.sailChangeFatigueCost('TV', 'NV'), 30);
   assert.equal(Core.sailChangeFatigueCost('NV', 'PV'), 20);
 
   const ship = freshShip();
@@ -114,7 +115,7 @@ test('all four Velmad crew-quality firing penalties and firing fatigue limits ar
   assert.equal(Core.crewQualityProfile('ELITE').eliteAllRudder, true);
 });
 
-test('runtime core exposes the minimal Velmad Hull 0 damage-control UI hook and Elite crew option', () => {
+test('runtime core exposes the Velmad damage-control UI hook and Elite crew option', () => {
   const coreSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'pilot2v2-core.js'), 'utf8');
   assert.match(coreSource, /pumpHullAction/);
   assert.match(coreSource, /Bombear\/reparar casco 0→1/);

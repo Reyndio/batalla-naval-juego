@@ -11,14 +11,13 @@
   const MAX_FIRE_RANGE = 400;
   const BASE_HULL = 1200;
   const BASE_RIG = 1200;
-  const MAX_RUDDER = 4;
+  const MAX_RUDDER = 2;
+  const RUDDER_POINT_DEG = 15;
 
   const SAIL_SPEED = { NV: 0, PV: 20, MV: 40, TV: 60 };
   const SAIL_ORDER = ['NV', 'PV', 'MV', 'TV'];
-  const RUDDER_DEG_PV = { 0: 0, 1: 10, 2: 20, 3: 30, 4: 45 };
-  const RUDDER_EFFECT = { NV: 1, PV: 1, MV: 0.7, TV: 0.4 };
-  const RUDDER_CHANGE_LIMIT = { NV: 4, PV: 4, MV: 3, TV: 2 };
-  const RUDDER_AMPLITUDE_LIMIT = { NV: 4, PV: 4, MV: 4, TV: 3 };
+  const VELMAD_CLASS_SPEED_FACTOR = { 1: 0.80, 2: 0.90, 3: 1.00, 4: 1.10, 5: 1.20, 6: 1.25 };
+  const VELMAD_CLASS_TWO_POINT_CHANCE = { 1: 0.25, 2: 0.50, 3: 0.75, 4: 1.00, 5: 1.00, 6: 1.00 };
 
   const FATIGUE_ACTION = 30;
   const FATIGUE_NV_PV = 20;
@@ -27,7 +26,8 @@
   const FATIGUE_ONE_BROADSIDE = 10;
   const FATIGUE_BOTH_BROADSIDES = 30;
   const FATIGUE_MAKE_FULL_SAIL = 30;
-  const FATIGUE_COLLECT_ALL_SAIL = 40;
+  // Project reconstruction decision: direct TV<->NV uses 30/30. The v1.2 English PDF contains a conflicting 40% line.
+  const FATIGUE_COLLECT_ALL_SAIL = 30;
   const FATIGUE_DOUBLE_SHOT_RELOAD = 10;
   const FATIGUE_PUMP_HULL = 20;
   const FATIGUE_FIRE_PARTY = 10;
@@ -110,6 +110,29 @@
     return recovery;
   }
 
+  function velmadClassOf(shipOrHistorical) {
+    const historical = shipOrHistorical && shipOrHistorical.historical ? shipOrHistorical.historical : shipOrHistorical;
+    const explicit = historical && (historical.velmadClass || (historical.velmad && historical.velmad.class));
+    if (Number.isInteger(Number(explicit)) && Number(explicit) >= 1 && Number(explicit) <= 6) return Number(explicit);
+    const rate = String(historical && historical.rate || '').toLowerCase();
+    if (/74-gun|70-gun/.test(rate)) return 3;
+    return 3;
+  }
+  function velmadClassSpeedFactor(shipOrHistorical) { return VELMAD_CLASS_SPEED_FACTOR[velmadClassOf(shipOrHistorical)] || 1; }
+  function velmadTwoPointBaseChance(shipOrHistorical) { return VELMAD_CLASS_TWO_POINT_CHANCE[velmadClassOf(shipOrHistorical)] == null ? 0 : VELMAD_CLASS_TWO_POINT_CHANCE[velmadClassOf(shipOrHistorical)]; }
+  function fallenMastCount(ship) { return Object.values(ship.masts || {}).filter(m => m && m.fallen).length; }
+  function availableRudderPointsByMasts(ship) {
+    const lost = fallenMastCount(ship);
+    if (lost >= 3) return 0;
+    if (lost >= 1) return 1;
+    return MAX_RUDDER;
+  }
+  function twoPointChance(ship) {
+    const profile = crewQualityProfile(ship);
+    if (profile.veteranTwoPoint || profile.eliteAllRudder) return 1;
+    return clamp(velmadTwoPointBaseChance(ship) * profile.twoPointChanceMultiplier, 0, 1);
+  }
+
   function lowerBatteryBroadsideKg(historical) {
     const fit = historical && historical.armament && historical.armament.fit || [];
     return fit.filter(p => p.type === 'long-gun' && p.deck === 'lower')
@@ -142,9 +165,9 @@
     const crew = historical.crew.actionComplement;
     return {
       id: historical.id, name: historical.name, side: historical.side, navy: historical.navy, nation: historical.nation,
-      historical: clone(historical), x: slot.x, y: slot.y, heading: slot.heading,
+      historical: clone(historical), velmadClass: velmadClassOf(historical), x: slot.x, y: slot.y, heading: slot.heading,
       startX: slot.x, startY: slot.y, startHeading: slot.heading,
-      sail: 'MV', previousSail: 'MV', effectiveSail: 'MV', rudder: 0, previousRudder: 0,
+      sail: 'MV', previousSail: 'MV', effectiveSail: 'MV', rudder: 0, previousRudder: 0, tackingAgainstWind: false,
       hull: BASE_HULL, maxHull: BASE_HULL, rig: BASE_RIG, maxRig: BASE_RIG,
       masts: { fore: { health: foreMax, max: foreMax, fallen: false }, main: { health: mainMax, max: mainMax, fallen: false }, mizzen: { health: mizzenMax, max: mizzenMax, fallen: false } },
       crew, initialCrew: crew, fatigue: 0, crewExperience: normalizeCrewQuality(experience),
@@ -182,7 +205,7 @@
     const expBySide = options.crewExperienceBySide || {};
     for (const ship of state.ships) {
       ship.x = ship.startX; ship.y = ship.startY; ship.heading = ship.startHeading;
-      ship.sail = 'MV'; ship.previousSail = 'MV'; ship.effectiveSail = 'MV'; ship.rudder = 0; ship.previousRudder = 0;
+      ship.sail = 'MV'; ship.previousSail = 'MV'; ship.effectiveSail = 'MV'; ship.rudder = 0; ship.previousRudder = 0; ship.tackingAgainstWind = false;
       ship.hull = ship.maxHull; for (const mast of Object.values(ship.masts)) { mast.health = mast.max; mast.fallen = false; } syncRig(ship);
       ship.crew = ship.initialCrew; ship.fatigue = 0; ship.crewExperience = normalizeCrewQuality(expBySide[ship.side] || ship.crewExperience || 'NORMAL');
       ship.portGuns = ship.gunsPerSide; ship.starboardGuns = ship.gunsPerSide; ship.rudderDamaged = false; ship.speedEfficiency = 1;
@@ -209,40 +232,85 @@
   function updateSpeedEfficiency(ship) {
     const hullLostPct = ship.maxHull > 0 ? (1 - ship.hull / ship.maxHull) * 100 : 100;
     const hullPenalty = Math.floor(hullLostPct / 10) * 0.01;
-    let mastPenalty = 0;
+    let partialRigPenalty = 0;
     for (const key of ['fore','main','mizzen']) {
       const mast = ship.masts[key], weight = SPEED_MAST_PENALTY[key];
-      if (mast.fallen) mastPenalty += weight; else if (mast.max > 0) mastPenalty += (1 - mast.health / mast.max) * weight * 0.5;
+      if (!mast.fallen && mast.max > 0) partialRigPenalty += (1 - mast.health / mast.max) * weight * 0.5;
     }
-    let efficiency = Math.max(0.05, 1 - hullPenalty - mastPenalty);
+    const fallenPenalty = fallenMastCount(ship) * 0.30;
+    let efficiency = velmadClassSpeedFactor(ship) * Math.max(0, 1 - hullPenalty - partialRigPenalty - fallenPenalty);
+    if (fallenMastCount(ship) >= 3) efficiency = 0;
     if (ship.hull <= 1) efficiency = Math.min(efficiency, HULL_ZERO_ONE_SPEED_CAP);
-    ship.speedEfficiency = efficiency; syncRig(ship); return efficiency;
+    ship.speedEfficiency = Math.max(0, efficiency); syncRig(ship); return ship.speedEfficiency;
   }
   function effectiveSailForOrder(ship, orderedSail) {
-    const currentIndex = SAIL_ORDER.indexOf(ship.sail), targetIndex = SAIL_ORDER.indexOf(orderedSail);
-    if (targetIndex < 0 || currentIndex < 0 || targetIndex === currentIndex) return ship.sail;
-    return SAIL_ORDER[currentIndex + Math.sign(targetIndex - currentIndex)];
+    return SAIL_ORDER.includes(orderedSail) ? orderedSail : ship.sail;
   }
-  function validateRudderOrder(ship, newRudder, sailOverride) {
-    const v = clamp(Number(newRudder) || 0, -MAX_RUDDER, MAX_RUDDER);
+  function validateRudderOrder(ship, newRudder) {
+    const raw = Number(newRudder) || 0;
+    if (raw < -MAX_RUDDER || raw > MAX_RUDDER) return { valid: false, reason: `Velmad permite 0, 1 o 2 puntos de timón (±${MAX_RUDDER}).` };
+    const v = clamp(raw, -MAX_RUDDER, MAX_RUDDER);
+    const mastLimit = availableRudderPointsByMasts(ship);
+    if (mastLimit === 0 && v !== 0) return { valid: false, reason: 'Desarbolado: no puede virar.' };
+    if (Math.abs(v) > mastLimit) return { valid: false, reason: 'Con un mástil perdido Velmad limita el giro a 1 punto.' };
     if (ship.rudderDamaged && Math.abs(v) > 1) return { valid: false, reason: 'Timón dañado: sólo ±1.' };
-    const sail = sailOverride || effectiveSailForOrder(ship, ship.order && ship.order.sail || ship.sail);
-    const ampLimit = RUDDER_AMPLITUDE_LIMIT[sail] == null ? 4 : RUDDER_AMPLITUDE_LIMIT[sail];
-    const changeLimit = RUDDER_CHANGE_LIMIT[sail] == null ? 4 : RUDDER_CHANGE_LIMIT[sail];
-    if (Math.abs(v) > ampLimit) return { valid: false, reason: `Amplitud ${v} excede ${ampLimit} para ${sail}.` };
-    if (Math.abs(v - ship.rudder) > changeLimit) return { valid: false, reason: `Cambio de timón excede ${changeLimit} para ${sail}.` };
-    return { valid: true, value: v, sail };
+    return { valid: true, value: v, requiresTwoPointRoll: Math.abs(v) === 2 };
   }
-  function projectMovement(state, ship, order) {
+  function resolveRudderOrder(ship, requestedRudder, rng, preview) {
+    const check = validateRudderOrder(ship, requestedRudder);
+    if (!check.valid) return { value: 0, requested: Number(requestedRudder) || 0, valid: false, reason: check.reason, chance: 0, rolled: false };
+    let requested = check.value;
+    if (requested === 0) return { value: 0, requested, valid: true, chance: 1, rolled: false };
+    if (ship.tackingAgainstWind) requested = Math.sign(requested);
+    if (Math.abs(requested) <= 1) return { value: requested, requested: check.value, valid: true, chance: 1, rolled: false };
+    const mastLimit = availableRudderPointsByMasts(ship);
+    if (mastLimit <= 1) return { value: Math.sign(requested), requested: check.value, valid: true, chance: 0, rolled: false };
+    const previous = Number(ship.rudder) || 0;
+    const sameSideAlreadySet = previous !== 0 && Math.sign(previous) === Math.sign(requested);
+    if (sameSideAlreadySet) return { value: requested, requested: check.value, valid: true, chance: 1, rolled: false };
+    const chance = twoPointChance(ship);
+    if (preview) return { value: requested, requested: check.value, valid: true, chance, rolled: false, preview: true };
+    const success = rngValue(rng) < chance;
+    return { value: success ? requested : Math.sign(requested), requested: check.value, valid: true, chance, rolled: true, success };
+  }
+  function directedArcContains(from, target, sign, span) {
+    if (sign > 0) return normalizeAngle(target - from) <= span + 1e-9;
+    if (sign < 0) return normalizeAngle(from - target) <= span + 1e-9;
+    return false;
+  }
+  function turnWithTacking(state, ship, rudder) {
+    let points = Math.abs(rudder), sign = Math.sign(rudder), heading = ship.heading;
+    if (!points || !sign) return { heading, usedPoints: 0, hitWind: false, leavingWind: false };
+    const wind = normalizeAngle(state.windFromDeg);
+    const leavingWind = !!ship.tackingAgainstWind || Math.abs(angleDiff(heading, wind)) < 1e-9;
+    if (leavingWind) points = Math.min(points, 1);
+    let used = 0, hitWind = false;
+    for (let i = 0; i < points; i++) {
+      if (!leavingWind && directedArcContains(heading, wind, sign, RUDDER_POINT_DEG) && Math.abs(angleDiff(heading, wind)) > 1e-9) {
+        heading = wind; used += 1; hitWind = true; break;
+      }
+      heading = normalizeAngle(heading + sign * RUDDER_POINT_DEG); used += 1;
+    }
+    return { heading: normalizeAngle(heading), usedPoints: used, hitWind, leavingWind };
+  }
+  function projectMovement(state, ship, order, options) {
     if (!activeShip(ship)) return { x: ship.x, y: ship.y, heading: ship.heading, sail: ship.sail, rudder: ship.rudder, valid: true };
-    order = order || defaultOrder(ship, null);
-    const sail = effectiveSailForOrder(ship, order.sail || ship.sail); const rv = validateRudderOrder(ship, order.rudder, sail); const rudder = rv.valid ? rv.value : ship.rudder;
-    const baseTurn = RUDDER_DEG_PV[Math.abs(rudder)] || 0; const turn = Math.sign(rudder) * baseTurn * (RUDDER_EFFECT[sail] || 1);
-    const newHeading = normalizeAngle(ship.heading + turn), avgHeading = normalizeAngle(ship.heading + turn / 2);
+    order = order || defaultOrder(ship, null); options = options || {};
+    const sail = effectiveSailForOrder(ship, order.sail || ship.sail);
+    const rr = resolveRudderOrder(ship, order.rudder, options.rng, !options.resolveChance);
+    const rudder = rr.valid ? rr.value : 0;
+    const turnResult = turnWithTacking(state, ship, rudder);
+    const actualTurn = angleDiff(turnResult.heading, ship.heading);
+    const avgHeading = normalizeAngle(ship.heading + actualTurn / 2);
     const baseDistance = ship.forceTurnOnly || ship.collidedThisTurn ? 0 : (SAIL_SPEED[sail] || 0);
     const speed = baseDistance * windSpeedModifier(ship, state.windFromDeg, state.windStrength) * ship.speedEfficiency;
     const rad = avgHeading * Math.PI / 180;
-    return { x: clamp(ship.x + speed * Math.sin(rad), 20, WORLD.width - 20), y: clamp(ship.y - speed * Math.cos(rad), 20, WORLD.height - 20), heading: newHeading, sail, rudder, valid: rv.valid, reason: rv.reason || null };
+    return {
+      x: clamp(ship.x + speed * Math.sin(rad), 20, WORLD.width - 20),
+      y: clamp(ship.y - speed * Math.cos(rad), 20, WORLD.height - 20),
+      heading: turnResult.heading, sail, rudder, valid: rr.valid, reason: rr.reason || null,
+      rudderResolution: rr, tackingAgainstWind: turnResult.hitWind || (turnResult.usedPoints === 0 && ship.tackingAgainstWind)
+    };
   }
 
   function broadsideArcFactor(attacker, target) {
@@ -258,9 +326,9 @@
   function rangeFactor(range) { if (range < 100) return 1.5; if (range < 250) return 1; if (range < 400) return 0.5; return 0; }
   function rudderTowardHeading(ship, desiredHeading) {
     const err = angleDiff(desiredHeading, ship.heading); let candidate = 0;
-    if (Math.abs(err) > 70) candidate = err > 0 ? 4 : -4; else if (Math.abs(err) > 35) candidate = err > 0 ? 2 : -2; else if (Math.abs(err) > 10) candidate = err > 0 ? 1 : -1;
+    if (Math.abs(err) > 25) candidate = err > 0 ? 2 : -2; else if (Math.abs(err) > 8) candidate = err > 0 ? 1 : -1;
     if (validateRudderOrder(ship, candidate).valid) return candidate;
-    for (const fallback of [Math.sign(candidate) * 2, Math.sign(candidate), 0]) if (validateRudderOrder(ship, fallback).valid) return fallback;
+    for (const fallback of [Math.sign(candidate), 0]) if (validateRudderOrder(ship, fallback).valid) return fallback;
     return 0;
   }
   function planAIOrder(state, ship) {
@@ -361,7 +429,7 @@
   }
 
   function movementFatigue(ship,projected) { return sailChangeFatigueCost(ship.sail,projected.sail); }
-  function fireFatigue(ship) { return ship.order && ship.order.fire ? broadsideFatigueCost(ship.order.fireBoth ? 2 : 1) : 0; }
+  function fireFatigue(ship) { return ship.order && ship.order.fire && canShipFire(ship) ? broadsideFatigueCost(ship.order.fireBoth ? 2 : 1) : 0; }
   function specialActionFatigue(ship) {
     const order=ship.order||{}; let cost=0;
     if (order.reloadDoubleShot) cost+=FATIGUE_DOUBLE_SHOT_RELOAD;
@@ -384,8 +452,8 @@
     const fatigueGenerated=new Map();
     for(const ship of state.ships){ if(!activeShip(ship))continue; if(ship.order && ship.order.repairHull) repairHullZeroToOne(ship,state); }
     const projections=new Map();
-    for(const ship of state.ships){ const p=projectMovement(state,ship,ship.order); projections.set(ship.id,p); fatigueGenerated.set(ship.id,movementFatigue(ship,p)+fireFatigue(ship)+specialActionFatigue(ship)); }
-    for(const ship of state.ships){ const p=projections.get(ship.id); if(!p)continue; ship.previousSail=ship.sail;ship.previousRudder=ship.rudder;ship.x=p.x;ship.y=p.y;ship.heading=p.heading;ship.effectiveSail=p.sail;ship.sail=p.sail;ship.rudder=p.rudder; }
+    for(const ship of state.ships){ const p=projectMovement(state,ship,ship.order,{rng,resolveChance:true}); projections.set(ship.id,p); fatigueGenerated.set(ship.id,movementFatigue(ship,p)+fireFatigue(ship)+specialActionFatigue(ship)); }
+    for(const ship of state.ships){ const p=projections.get(ship.id); if(!p)continue; ship.previousSail=ship.sail;ship.previousRudder=ship.rudder;ship.x=p.x;ship.y=p.y;ship.heading=p.heading;ship.effectiveSail=p.sail;ship.sail=p.sail;ship.rudder=p.rudder;ship.tackingAgainstWind=!!p.tackingAgainstWind; }
     const collisionFatigue=applyCollisionDamage(state,rng); for(const [id,cost] of collisionFatigue) fatigueGenerated.set(id,(fatigueGenerated.get(id)||0)+cost);
     const shooters=state.ships.filter(activeShip).map(s=>s.id); for(const id of shooters){const attacker=state.ships.find(s=>s.id===id); if(activeShip(attacker))resolveShot(state,attacker,rng);}
     for(const ship of state.ships){ if(!ship)continue; const generated=(fatigueGenerated.get(ship.id)||0); if(!ship.hullRepairUsedThisTurn)applyFatigueEndTurn(ship,generated); else if(generated>0)ship.fatigue+=generated; ship.loadedAmmo=ship.nextAmmo; ship.confirmed=false; ship.forceTurnOnly=false; updateSpeedEfficiency(ship); }
@@ -395,29 +463,46 @@
     return state;
   }
   function autoOrderSide(state,side){for(const ship of state.ships)if(ship.side===side&&activeShip(ship))ship.order=planAIOrder(state,ship);return state;}
-  function validateState(state){const errors=[];if(!state||!Array.isArray(state.ships)||state.ships.length!==4)errors.push('expected four ships');if(!state||!Array.isArray(state.ships))return errors;for(const s of state.ships){for(const key of ['x','y','heading','hull','rig','crew','fatigue','portGuns','starboardGuns','speedEfficiency'])if(!Number.isFinite(s[key]))errors.push(`${s.id}: non-finite ${key}`);if(!s.id||!s.side)errors.push('ship missing identity/side');if(!s.masts||!s.masts.fore||!s.masts.main||!s.masts.mizzen)errors.push(`${s.id}: missing mast state`);if(s.portGuns<0||s.starboardGuns<0||s.portGuns>s.gunsPerSide||s.starboardGuns>s.gunsPerSide)errors.push(`${s.id}: invalid gun state`);if(s.fatigue<0)errors.push(`${s.id}: invalid fatigue`);}if(state.ships.filter(s=>s.side===SIDE_ROYAL_NAVY).length!==2)errors.push('Royal Navy side must contain two ships');if(state.ships.filter(s=>s.side===SIDE_REAL_ARMADA).length!==2)errors.push('Real Armada side must contain two ships');return errors;}
+  function validateState(state){const errors=[];if(!state||!Array.isArray(state.ships)||state.ships.length!==4)errors.push('expected four ships');if(!state||!Array.isArray(state.ships))return errors;for(const s of state.ships){for(const key of ['x','y','heading','hull','rig','crew','fatigue','portGuns','starboardGuns','speedEfficiency'])if(!Number.isFinite(s[key]))errors.push(`${s.id}: non-finite ${key}`);if(!s.id||!s.side)errors.push('ship missing identity/side');if(!s.masts||!s.masts.fore||!s.masts.main||!s.masts.mizzen)errors.push(`${s.id}: missing mast state`);if(s.portGuns<0||s.starboardGuns<0||s.portGuns>s.gunsPerSide||s.starboardGuns>s.gunsPerSide)errors.push(`${s.id}: invalid gun state`);if(s.fatigue<0)errors.push(`${s.id}: invalid fatigue`);if(!Number.isInteger(s.velmadClass)||s.velmadClass<1||s.velmadClass>6)errors.push(`${s.id}: invalid Velmad class`);}if(state.ships.filter(s=>s.side===SIDE_ROYAL_NAVY).length!==2)errors.push('Royal Navy side must contain two ships');if(state.ships.filter(s=>s.side===SIDE_REAL_ARMADA).length!==2)errors.push('Real Armada side must contain two ships');return errors;}
 
+  function orderSelectedExtremeSail(targetSail) {
+    if (!browserStateRef || !root || !root.document) return false;
+    const select=root.document.getElementById('shipSelect'),ship=select&&browserStateRef.ships.find(s=>s.id===select.value);
+    if(!ship||!activeShip(ship)||!SAIL_ORDER.includes(targetSail))return false;
+    if(!ship.order)ship.order=defaultOrder(ship,null);ship.order.sail=targetSail;ship.confirmed=false;
+    select.dispatchEvent(new Event('change',{bubbles:true}));return true;
+  }
   function installVelmadUiAdditions() {
     if (!root || !root.document) return;
     const doc=root.document;
     for (const id of ['rnCrewExperience','raCrewExperience']) {
       const select=doc.getElementById(id); if(select && !Array.from(select.options).some(o=>o.value==='ELITE')) { const o=doc.createElement('option');o.value='ELITE';o.textContent='Elite';select.appendChild(o); }
     }
+    const rudderButtons=doc.getElementById('rudderButtons');
+    if(rudderButtons){
+      rudderButtons.querySelectorAll('[data-rudder="-4"],[data-rudder="-3"],[data-rudder="3"],[data-rudder="4"]').forEach(b=>b.style.display='none');
+      const left=rudderButtons.querySelector('[data-rudder="-2"]'),right=rudderButtons.querySelector('[data-rudder="2"]');if(left)left.textContent='T◀';if(right)right.textContent='T▶';
+      if(rudderButtons.previousElementSibling)rudderButtons.previousElementSibling.textContent='Timón Velmad — 1 punto = 15° · T = 2 puntos';
+    }
     const panel=doc.getElementById('leftPanel'); if(!panel || doc.getElementById('velmadDamageControl')) return;
-    const box=doc.createElement('section'); box.id='velmadDamageControl'; box.innerHTML='<h3>Control de daños Velmad</h3><div id="velmadHullState" class="small">Casco: —</div><button id="pumpHullAction" style="width:100%;margin-top:6px">Bombear/reparar casco 0→1 (+20% fatiga)</button>';
+    const box=doc.createElement('section'); box.id='velmadDamageControl'; box.innerHTML='<h3>Acciones Velmad</h3><div id="velmadHullState" class="small">Casco: —</div><button id="pumpHullAction" style="width:100%;margin-top:6px">Bombear/reparar casco 0→1 (+20% fatiga)</button><div class="two-col" style="margin-top:6px"><button id="velmadNoSail">Recoger a NV (+30%)</button><button id="velmadFullSail">Largar a TV (+30%)</button></div><div class="small" style="margin-top:4px">Reconstrucción jugable 30/30 para los extremos NV↔TV; el PDF inglés v1.2 conserva una línea conflictiva de 40%.</div>';
     panel.appendChild(box); const button=box.querySelector('#pumpHullAction'), status=box.querySelector('#velmadHullState');
-    function refresh(){const select=doc.getElementById('shipSelect'),ship=browserStateRef&&select&&browserStateRef.ships.find(s=>s.id===select.value);if(!ship){status.textContent='Casco: —';button.disabled=true;return;}const ordered=!!(ship.order&&ship.order.repairHull);status.textContent=ship.sinking?'HUNDIÉNDOSE — fuera de combate':ship.hull===0?(ordered?'CASCO 0 — bombeo/reparación ordenado':'CASCO 0 — batería baja inoperativa, velocidad máx. 70%'):ship.hull===1?'CASCO 1 — velocidad máx. 70%':`Casco ${Math.round(ship.hull)} HP`;button.disabled=!canRepairHullZeroToOne(ship)||ordered;}
+    box.querySelector('#velmadNoSail').addEventListener('click',()=>orderSelectedExtremeSail('NV'));
+    box.querySelector('#velmadFullSail').addEventListener('click',()=>orderSelectedExtremeSail('TV'));
+    function refresh(){const select=doc.getElementById('shipSelect'),ship=browserStateRef&&select&&browserStateRef.ships.find(s=>s.id===select.value);if(!ship){status.textContent='Casco: —';button.disabled=true;return;}const ordered=!!(ship.order&&ship.order.repairHull);status.textContent=ship.sinking?'HUNDIÉNDOSE — fuera de combate':ship.hull===0?(ordered?'CASCO 0 — bombeo/reparación ordenado':'CASCO 0 — batería baja inoperativa, velocidad máx. 70%'):ship.hull===1?'CASCO 1 — velocidad máx. 70%':`Casco ${Math.round(ship.hull)} HP · clase Velmad ${ship.velmadClass}`;button.disabled=!canRepairHullZeroToOne(ship)||ordered;}
     button.addEventListener('click',()=>{const select=doc.getElementById('shipSelect'),ship=browserStateRef&&select&&browserStateRef.ships.find(s=>s.id===select.value);if(!ship||!canRepairHullZeroToOne(ship))return;if(!ship.order)ship.order=defaultOrder(ship,null);ship.order.repairHull=true;ship.confirmed=false;select.dispatchEvent(new Event('change',{bubbles:true}));refresh();});
     doc.getElementById('shipSelect')?.addEventListener('change',()=>setTimeout(refresh,0)); setInterval(refresh,1000); refresh();
   }
   if (root && root.document) setTimeout(installVelmadUiAdditions,0);
 
   return {
-    SIDE_ROYAL_NAVY,SIDE_REAL_ARMADA,WORLD,MAX_FIRE_RANGE,BASE_HULL,BASE_RIG,MAX_RUDDER,SAIL_SPEED,SAIL_ORDER,
+    SIDE_ROYAL_NAVY,SIDE_REAL_ARMADA,WORLD,MAX_FIRE_RANGE,BASE_HULL,BASE_RIG,MAX_RUDDER,RUDDER_POINT_DEG,SAIL_SPEED,SAIL_ORDER,
+    VELMAD_CLASS_SPEED_FACTOR,VELMAD_CLASS_TWO_POINT_CHANCE,
     FATIGUE_ACTION,FATIGUE_NV_PV,FATIGUE_RECOVERY,FATIGUE_RECOVERY_HIGH,FATIGUE_ONE_BROADSIDE,FATIGUE_BOTH_BROADSIDES,FATIGUE_MAKE_FULL_SAIL,FATIGUE_COLLECT_ALL_SAIL,FATIGUE_DOUBLE_SHOT_RELOAD,FATIGUE_PUMP_HULL,FATIGUE_COLLISION,
     HULL_ZERO_SINKING_CHANCE,HULL_ZERO_ONE_SPEED_CAP,CREW_QUALITY,
-    buildInitialState,startBattle,livingShips,nearestEnemy,distance,angleTo,relativeBearing,broadsideArcFactor,validateRudderOrder,projectMovement,planAIOrder,autoOrderSide,
+    buildInitialState,startBattle,livingShips,nearestEnemy,distance,angleTo,relativeBearing,broadsideArcFactor,validateRudderOrder,resolveRudderOrder,projectMovement,planAIOrder,autoOrderSide,
     resolveShot,resolveTurn,evaluateResult,updateSpeedEfficiency,fatigueEfficiency,crewQualityProfile,canShipFire,broadsideFatigueCost,collisionFatigueCost,sailChangeFatigueCost,recoverFatigue,
+    velmadClassOf,velmadClassSpeedFactor,velmadTwoPointBaseChance,twoPointChance,fallenMastCount,availableRudderPointsByMasts,turnWithTacking,
     lowerBatteryBroadsideKg,mainBatteryAvailable,availableBroadsidePowerFactor,canRepairHullZeroToOne,repairHullZeroToOne,checkHullZeroSinking,maybeChangeWind,validateState,seededRng
   };
 });
