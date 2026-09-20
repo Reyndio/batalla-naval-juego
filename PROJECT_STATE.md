@@ -12,9 +12,9 @@ Last updated: 2026-09-20
 
 Open draft PR: **#2 — Restore prototype interaction parity in historical 2v2 pilot**.
 
-Current active-branch documentation head recorded at handoff: `ef977ff4a55f72416e04031ff7487b312d400ce9`.
-Latest validated implementation commit: `71f4bb9979d6f5d72f352e83d08cfe5a1bdd197c`.
-Velmad manoeuvre merge commit: `edd0c0c7a9a77dd2afa407781032b921affd7e99`.
+Current active-branch documentation head recorded at handoff: `5bda0907d3b70868c0480a0abf4b6a1128e496c0`.
+Latest sail-fatigue core correction: `4986ed5fb7339e0c36de2b69c3c63b2d17e171f2`.
+Latest dedicated regression-test commit: `b9099e2a9e46a5988a8ea56d5fb74bd61b99852b`.
 
 **Fresh-chat rule:** switch conceptually to `feature/restore-prototype-ux-parity` before inspecting or changing implementation. Read that branch's `PROJECT_STATE.md`, `docs/research/VELMAD_V1_2_MECHANICS_COMPLIANCE.md`, and relevant ADRs. Do not treat this canonical snapshot as the current implementation if the active branch has advanced.
 
@@ -42,20 +42,23 @@ Authoritative current checklist lives on the active branch:
 ## Current verified / reconstructed progress
 
 - **Hull 0 / Hull 1 / sinking — VERIFIED.** Hull 0 remains operational, 10% per-turn sinking check, Hull 0/1 70% speed cap, lower battery unavailable at Hull 0, pump 0→1 at fatigue <=100 for +20.
-- **Vessel-class dependency for current four ships — VERIFIED.** Bellerophon, Conqueror, Montañés and Bahama are documented 74-gun/74-gun-class two-deckers and resolve to Velmad third class.
+- **Vessel-class dependency for current four ships — VERIFIED.** Bellerophon, Conqueror, Montañés and Bahama resolve from documented 74-gun/74-gun-class rating to Velmad third class.
 - **Velmad manoeuvring — VERIFIED explicit rudder/history/class mechanics.** 0/1/2 points, 15° per point, previous-helm history, class chances 25/50/75/100/100/100, one mast max one point, dismasted no turn.
 - **Tacking — VERIFIED.** Stop exactly head-to-wind and limit departure to one point.
-- **Crew quality — shooting and manoeuvre portions verified; row PARTIAL until boarding exists.** Beginner half manoeuvre chance, Normal class chance, Veteran/Elite full two-point helm; exact firing fatigue tables/limits retained.
-- **Extreme sail transition — PROJECT-RECONSTRUCTION.** Direct NV→TV and TV→NV are playable at +30 fatigue each in one action. ADR-0005 records this as a deliberate reconstruction because the translated v1.2 PDF also contains a conflicting +40 `Collect all the sail` line. The conflict is not erased or relabelled as literal Velmad.
+- **Crew quality — shooting and manoeuvre portions verified; row PARTIAL until boarding exists.**
+- **Extreme sail transition — PROJECT-RECONSTRUCTION.** Direct NV→TV and TV→NV are playable at +30 fatigue each in one action. The reverse +30 is scoped only to direct TV→NV; PV/MV→NV do not inherit it. A live-user regression exposed the earlier over-broad condition and `tests/velmad-hull-fatigue.test.js` now covers PV→NV explicitly. ADR-0005 preserves the conflicting +40 source line.
+- **Gunnery/ammunition — advanced PARTIAL.** Round, bar/chain, grape, separately reloaded double shot, per-band loading, <=112 m forced hull, target-sail modifiers and shooter NV/TV service modifiers are implemented/tested. Source-omitted base damage/range, crew-service, fire and morale dependencies remain open.
+- **Windward/leeward shooting — VERIFIED.** Exact 30° classification and explicit damage allocations implemented/tested.
+- **Carronades — VERIFIED for actual carronades in the current historical data path.** Exact 300/225/150 m contribution table. Spanish obuses remain distinct pending evidence.
 - **Sailing speed — PARTIAL.** Class-relative factors, -30% per fallen mast, dismasted stop and Hull 0/1 cap exist; literal rigging thresholds and dragging-mast rule remain pending.
 
 ## Validation / deployment
 
-Implementation commit `71f4bb9979d6f5d72f352e83d08cfe5a1bdd197c` reached `live` on Render service `batalla-naval-2v2-parity` through deploy `dep-danuo4uq1p3s73cpe8qg`.
+The regression-corrected branch through commit `13cfcdb624f77fe1152e32e0d3a6af4e38d761f7` reached **live** on Render service `batalla-naval-2v2-parity` through deploy `dep-danvdfvlk1mc73fmoh60`.
 
 The service builds with `npm install && npm test`; therefore the full repository suite passed before that deployment went live.
 
-Validated suite: **37 tests, 0 failed**.
+Validated suite after the sail regression test: **51 tests, 0 failed**.
 
 Development service:
 
@@ -69,14 +72,14 @@ Stable reference service remains untouched.
 
 ## Next concrete task
 
-Continue the baseline on the active branch with the gunnery dependency slice:
+Continue the baseline on the active branch with the morale / surrender / boarding dependency chain:
 
-1. implement explicit four-ammunition behavior and loading restrictions without inventing Velmad's omitted base damage algorithm;
-2. add exact target-sail modifiers and <=112 m forced-hull rule;
-3. implement explicit windward/leeward allocation;
-4. add carronade range contribution for actual carronades while keeping Spanish obuses distinct unless evidence supports equivalence;
-5. deterministic tests + deployment before marking gunnery subparts verified;
-6. continue afterward with morale/surrender/boarding/critical/fire systems, preserving SOURCE-AMBIGUOUS and SOURCE-OMITTED labels where required.
+1. implement exact morale loss/recovery triggers with unambiguous thresholds;
+2. implement surrender checks and one-turn white-flag state;
+3. implement boarding eligibility, ratio modifiers, casualties and crew-quality/fatigue effects;
+4. implement capture, prize-crew requirements and recapture behavior;
+5. add deterministic tests before marking those rows VERIFIED;
+6. continue afterward with critical mast/dragging-mast, four helm-damage states and the fire loop, keeping ambiguous critical formulas unresolved rather than guessing.
 
 ## Branch discipline
 
