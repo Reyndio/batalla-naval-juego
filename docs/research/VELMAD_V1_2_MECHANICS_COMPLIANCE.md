@@ -11,8 +11,9 @@ Purpose: exhaustive implementation gate. Nothing in this file is optional merely
 - **MISSING** — not implemented.
 - **SOURCE-AMBIGUOUS** — the manual states a rule, but the translated wording does not define one unique algorithm safely enough to encode without further source work.
 - **SOURCE-OMITTED** — the manual explicitly says the detailed algorithm was omitted because the computer automated it.
+- **PROJECT-RECONSTRUCTION** — playable behavior chosen from non-canonical reconstruction evidence where the v1.2 text is conflicting or incomplete; never presented as literal Velmad text.
 
-A feature is not VERIFIED merely because a similar mechanic exists. Verification evidence for the current Hull 0 / Hull 1 and fatigue/crew slice is in `tests/velmad-hull-fatigue.test.js`.
+Verification evidence for the current Hull 0 / fatigue / manoeuvre slice is in `tests/velmad-hull-fatigue.test.js` and `tests/velmad-manoeuvre.test.js`.
 
 ---
 
@@ -21,9 +22,9 @@ A feature is not VERIFIED merely because a similar mechanic exists. Verification
 Velmad baseline:
 
 - morale represents crew state, readiness and combat capability;
-- -2 after a bow rake from less than 2 ship lengths with at least 150 damage;
+- -2 after a bow rake from less than 2 ship lengths with at least 150 damage points;
 - -3 when losing a mast;
-- -4 after a stern rake from less than 2 lengths with at least 150 damage;
+- -4 after a stern rake from less than 2 lengths with at least 150 damage points;
 - rake damage 75–149 causes half the corresponding morale loss;
 - -1 after 100 damage points of grapeshot to the hull from less than 2 lengths;
 - -1 after receiving 500 or more total damage points in one broadside fired to the hull;
@@ -39,8 +40,8 @@ Manual action costs:
 - one broadside fired: +10%;
 - both broadsides fired: +30%;
 - making full sail: +30%;
-- `Remove all sailing`: +30% — source wording retained as ambiguous until reconciled;
-- collect all sail / pass to no sail: +40%;
+- `Remove all sailing`: +30%;
+- `Collect all the sail (pass to no sail)`: +40%;
 - from no sail to few or medium sail: +20%;
 - fire-fighting party: +10% per turn;
 - cutting/unravelling/dislodging a fallen mast: +10% per turn;
@@ -61,13 +62,15 @@ Recovery/effects:
 
 Current implementation evidence:
 
-- exact constants/helpers and deterministic tests exist for one broadside +10, both broadsides +30, making full sail +30, collecting all sail +40, no sail to few/medium +20, collision 60/40/0, normal recovery 10 and >80 recovery 20;
-- firing effectiveness and firing eligibility use the four crew-quality fatigue tables;
-- +10 hooks exist for double-shot reload, fire-fighting party and cutting party, but the complete dependent action systems are not yet implemented;
-- the translated `Remove all sailing: 30%` line is deliberately not guessed;
-- the current battle UI does not yet support a true two-broadside-in-one-turn order, although the +30 rule is encoded/tested.
+- one broadside +10, both broadsides +30, making full sail +30, no sail to few/medium +20, collision 60/40/0, recovery 10 / >80 recovery 20 are encoded/tested;
+- firing effectiveness and eligibility use the four crew-quality fatigue tables;
+- firing fatigue is generated only when the ship is actually eligible to fire;
+- +10 hooks exist for double-shot reload, fire-fighting and cutting parties, while those owning subsystems remain incomplete;
+- direct extreme sail orders are now playable as `NV→TV +30` and `TV→NV +30` in one action;
+- that 30/30 extreme rule is **PROJECT-RECONSTRUCTION**, documented by ADR-0005, because the English v1.2 text simultaneously contains the conflicting +40 `Collect all the sail` line;
+- true two-broadside-in-one-turn execution is still absent even though its +30 helper exists.
 
-Status: **PARTIAL** — exact unambiguous costs/recovery and shooting effects are implemented, but dependent actions, two-broadside execution, boarding interaction and the ambiguous source line still prevent full verification.
+Status: **PARTIAL / SOURCE-AMBIGUOUS with PROJECT-RECONSTRUCTION for the extreme sail transition** — do not mark the 30/30 choice as literal-text VERIFIED unless stronger source evidence resolves the conflict.
 
 ## 3. Vessel classes
 
@@ -80,7 +83,14 @@ Manual classification required because other mechanics depend on it:
 - fifth class: 36/32/28-gun frigates; 24-gun corvettes;
 - sixth class: 18-gun brigs.
 
-Status: **PARTIAL** — historical records exist, but Velmad class is not yet a complete mechanical dependency layer.
+Current implementation evidence:
+
+- a Velmad-class dependency layer exists in the core;
+- class-relative speed and two-point manoeuvre tables use this class value;
+- Bellerophon, Conqueror, Montañés and Bahama are all classified from their documented 74-gun / 74-gun-class two-decker rating as **third class** rather than from their fitted total principal pieces;
+- deterministic tests verify all four pilot ships resolve to class 3 and therefore to 100% class speed factor and 75% base two-point chance.
+
+Status: **VERIFIED for the current four-ship pilot classification/dependency path**. Broader future ship ingestion must extend classification coverage when new classes are added.
 
 ## 4. Sailing speed
 
@@ -103,21 +113,38 @@ State modifiers:
 - hull 0 or 1: max 70%;
 - dragging a mast: max 90%.
 
-Current implementation: the hull 0/1 70% cap is implemented and tested.
+Current implementation evidence:
 
-Status: **PARTIAL** — the rest of the complete Velmad speed/class/rigging table is not yet reproduced exactly.
+- class-relative 80/90/100/110/120/125 factors are represented;
+- each fallen mast applies -30%; dismasted state stops movement;
+- Hull 0/1 70% cap is implemented and tested;
+- current rigging points still use the inherited prototype scale (`BASE_RIG=1200`), so the literal Velmad 2800/1800 etc thresholds cannot yet be applied without first recovering/defining the compatible initial rig-point scale;
+- dragging-mast 90% cap remains absent.
+
+Status: **PARTIAL** — class and fallen-mast pieces advanced, literal rig thresholds/dragging-mast rule remain unresolved.
 
 ## 5. Manoeuvring
 
+- Velmad manoeuvre uses two rudder points, one point, or none;
 - each rudder point turns 15°;
 - previous-turn rudder history controls whether all rudder or only one point may be applied;
 - previous port allows all port next turn; previous starboard allows all starboard;
-- centered or changing to the opposite side allows only one point;
+- centered or changing to the opposite side normally allows only one point;
 - with one mast lost: maximum one point; dismasted: none;
 - independent chance to use two points regardless of previous rudder: first 25%, second 50%, third 75%, fourth/fifth/sixth 100%;
-- all ships may beat close to wind in Velmad despite historical differences, with severe speed/manoeuvre penalties.
+- Velmad deliberately does not model ship-specific historical close-hauled differences, although the game still has speed/manoeuvre consequences around the wind.
 
-Status: **PARTIAL** — current pilot still uses the restored stable-prototype helm model. Crew-quality manoeuvre traits are recorded but are not considered verified until this Velmad helm/class rule is implemented.
+Current implementation evidence:
+
+- provisional ±4 stable-prototype helm has been replaced by 0/±1/±2 Velmad points;
+- one point is exactly 15° and two points exactly 30° before tacking truncation;
+- same-side previous helm permits two points without the independent class roll;
+- centered/opposite-side two-point request uses the class chance;
+- one fallen mast limits to one point; dismasted limits to none;
+- deterministic threshold tests cover class-3 75% chance and previous-helm behavior;
+- runtime UI hides the obsolete ±3/±4 controls and labels 1 point / two-point full helm.
+
+Status: **VERIFIED for the explicit v1.2 rudder-point/history/class mechanics**. Separate four-state helm damage remains section 19.
 
 ## 6. Tacking
 
@@ -125,11 +152,18 @@ Status: **PARTIAL** — current pilot still uses the restored stable-prototype h
 - when leaving that situation, only one rudder point may be used regardless of ordered helm;
 - wearing is distinguished from tacking.
 
-Status: **MISSING**.
+Implementation:
+
+- turning is applied point-by-point at 15°;
+- a point whose arc reaches/crosses head-to-wind clamps the heading exactly to wind direction and consumes no further points that turn;
+- the next turn while leaving head-to-wind is limited to one point even when two were ordered;
+- deterministic tests cover both arrival at and departure from head-to-wind.
+
+Status: **VERIFIED** for the explicit tacking stop/exit rule. Wearing remains ordinary turning around the opposite side and does not use this stop condition.
 
 ## 7. Crew quality
 
-Four levels and stated shooting limits:
+Four levels and stated shooting/manoeuvre limits:
 
 - Beginner: 6% firing penalty per 10% fatigue; may fire through 100%; class two-point manoeuvre chance halved;
 - Normal: 5% per 10%; may fire through 100%; normal class two-point chance;
@@ -139,13 +173,13 @@ Four levels and stated shooting limits:
 
 Current implementation evidence:
 
-- all four levels exist (`NOVATA`, `NORMAL`, `VETERANA`, `ELITE`, with English aliases where useful);
-- exact discrete firing penalties per 10% fatigue are implemented and tested;
-- exact 100/120% firing limits are implemented and tested;
-- manoeuvre properties are represented in the quality profiles but not yet wired into the still-provisional helm model;
+- all four levels exist (`NOVATA`, `NORMAL`, `VETERANA`, `ELITE`);
+- exact discrete firing penalties per 10% fatigue and exact 100/120% firing limits are tested;
+- Beginner halves the class two-point probability; Normal uses class probability; Veteran and Elite may use the full two-point helm in the current 0/1/2 Velmad model;
+- deterministic manoeuvre tests cover these distinctions;
 - boarding quality effects await the boarding subsystem.
 
-Status: **PARTIAL** — shooting/fatigue portion verified; manoeuvring and boarding portions remain pending.
+Status: **PARTIAL** — shooting and manoeuvring portions verified; boarding portion remains pending.
 
 ## 8. Ammunition, shooting and damage
 
@@ -474,17 +508,17 @@ These algorithms must not be invented and labelled as Velmad. Stable/original im
 
 ---
 
-# Current verified slice — 2026-09-20
+# Current verified / reconstructed slice — 2026-09-20
 
-The first exact mechanical contradiction closed under ADR-0004 is **Hull 0 / Hull 1 / sinking** (section 15).
+Verified explicit mechanics now include:
 
-The same implementation unit also advanced section 2 and section 7:
+- Hull 0 / Hull 1 / sinking (section 15);
+- current four-ship vessel classification/dependency path (section 3);
+- explicit rudder-point/history/class manoeuvre rules (section 5);
+- explicit tacking stop/exit rule (section 6);
+- crew-quality shooting and manoeuvre portions, while boarding remains pending (section 7 stays PARTIAL).
 
-- exact unambiguous fatigue costs/recovery are now encoded and tested where the required action exists or has a testable cost hook;
-- the four crew-quality levels now reproduce Velmad's shooting penalties and 100/120% firing limits;
-- both sections deliberately remain PARTIAL because their manoeuvre, boarding and dependent-action interactions are not all implemented yet.
-
-No historical improvement or rebalance was introduced in this slice; it is baseline restoration only.
+Fatigue remains PARTIAL because dependent actions/boarding/two-broadside execution are incomplete and because the translated sail-extreme lines conflict. The current playable `NV↔TV = 30/30` rule is explicitly a PROJECT-RECONSTRUCTION under ADR-0005, not a claim that the +40 line never existed.
 
 # Release gate
 
@@ -497,7 +531,4 @@ After that baseline exists, changes follow ADR-0001:
 3. provide strong historical/technical/physical evidence;
 4. compare expected behavior;
 5. document uncertainty;
-6. approve the change explicitly;
-7. retain useful regression coverage for baseline and replacement.
-
-No addition or realism improvement is accepted merely because it seems plausible.
+6. test the replacement.
