@@ -28,7 +28,7 @@ function stateAtBroadside() {
   return { state, attacker, target };
 }
 
-test('prototype-parity command surface includes explicit start, clock, pause, sail, full helm, firing and camera controls', () => {
+test('prototype-parity command surface includes explicit start, clock, pause, sail, helm, firing and camera controls', () => {
   const html = read('pilot-2v2.html');
   for (const sail of ['NV', 'PV', 'MV', 'TV']) assert.match(html, new RegExp(`data-sail=["']${sail}["']`));
   for (const rudder of [-4,-3,-2,-1,0,1,2,3,4]) assert.match(html, new RegExp(`data-rudder=["']${rudder}["']`));
@@ -78,28 +78,30 @@ test('runtime ship state restores prototype crew, fatigue, guns, masts, rudder a
   }
 });
 
-test('rudder validation matches stable prototype limits: MV change max 3, PV permits 4, damaged rudder only +/-1', () => {
+test('Velmad helm supersedes the provisional stable limits: maximum two points, mast and rudder damage restrictions retained', () => {
   const state = Core.buildInitialState(data);
   const ship = state.ships.find(s => s.side === Core.SIDE_ROYAL_NAVY);
-  ship.sail = 'MV';
-  ship.order.sail = 'MV';
   ship.rudder = 0;
-  assert.equal(Core.validateRudderOrder(ship, 3).valid, true);
-  assert.equal(Core.validateRudderOrder(ship, 4).valid, false);
-  ship.sail = 'PV'; ship.order.sail = 'PV';
-  assert.equal(Core.validateRudderOrder(ship, 4).valid, true);
+  assert.equal(Core.validateRudderOrder(ship, 2).valid, true);
+  assert.equal(Core.validateRudderOrder(ship, 3).valid, false);
+  assert.equal(Core.MAX_RUDDER, 2);
+  ship.masts.fore.fallen = true;
+  assert.equal(Core.validateRudderOrder(ship, 2).valid, false);
+  assert.equal(Core.validateRudderOrder(ship, 1).valid, true);
+  ship.masts.fore.fallen = false;
   ship.rudderDamaged = true;
   assert.equal(Core.validateRudderOrder(ship, 2).valid, false);
   assert.equal(Core.validateRudderOrder(ship, -1).valid, true);
 });
 
-test('sail changes are progressive rather than jumping directly through multiple sail states', () => {
+test('explicit project reconstruction permits direct extreme sail orders rather than forced progressive stepping', () => {
   const state = Core.buildInitialState(data);
   const ship = state.ships.find(s => s.side === Core.SIDE_ROYAL_NAVY);
   ship.sail = 'NV';
   ship.order = { ...ship.order, sail: 'TV', rudder: 0 };
   const projection = Core.projectMovement(state, ship, ship.order);
-  assert.equal(projection.sail, 'PV');
+  assert.equal(projection.sail, 'TV');
+  assert.equal(Core.sailChangeFatigueCost('NV', 'TV'), 30);
 });
 
 test('fatigue uses the Velmad full-sail cost, then exact idle recovery, and affects combat efficiency', () => {
