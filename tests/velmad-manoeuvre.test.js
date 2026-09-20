@@ -92,7 +92,7 @@ test('tacking stops exactly head-to-wind and departure is limited to one point',
   assert.equal(result.leavingWind, true);
 });
 
-test('playable project reconstruction allows direct NV to TV and TV to NV at 30 fatigue each', () => {
+test('direct NV to TV and TV to NV cross three sail points and cost 30 fatigue each', () => {
   const state = Core.buildInitialState(data, { windFromDeg: 0 });
   const ship = state.ships[0];
   ship.sail = 'NV';
@@ -107,10 +107,10 @@ test('playable project reconstruction allows direct NV to TV and TV to NV at 30 
   assert.equal(Core.sailChangeFatigueCost('TV', 'NV'), 30);
 });
 
-test('runtime core exposes the direct extreme-sail actions and two-point helm UI', () => {
+test('runtime core exposes sail-point fatigue guidance and two-point helm UI', () => {
   const source = fs.readFileSync(path.join(__dirname, '..', 'src', 'pilot2v2-core.js'), 'utf8');
   assert.match(source, /velmadNoSail/);
   assert.match(source, /velmadFullSail/);
-  assert.match(source, /Reconstrucción jugable 30\/30/);
+  assert.match(source, /cada punto de velamen NV↔PV↔MV↔TV cuesta \+10%/);
   assert.match(source, /Timón Velmad — 1 punto = 15°/);
 });
