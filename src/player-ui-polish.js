@@ -160,6 +160,7 @@
     if (!c) return;
 
     doc.getElementById('startBattle')?.addEventListener('click', () => setTimeout(fitFleet, 0));
+    doc.getElementById('resetBattle')?.addEventListener('click', () => setTimeout(fitFleet, 0));
     doc.getElementById('fitFleet')?.addEventListener('click', () => setTimeout(fitFleet, 0));
     for (const id of ['centerSelected', 'resetCamera']) doc.getElementById(id)?.addEventListener('click', () => setTimeout(centerSelected, 0));
     doc.getElementById('zoomIn')?.addEventListener('click', () => { camera.zoom = clamp(camera.zoom * 1.18, 0.45, 2.5); });
@@ -187,6 +188,11 @@
       camera.x += beforeX - afterX;
       camera.y += beforeY - afterY;
     }, { passive: true });
+
+    root.addEventListener('keydown', e => {
+      if (['INPUT', 'SELECT', 'TEXTAREA'].includes(e.target.tagName)) return;
+      if (e.key.toLowerCase() === 'c') setTimeout(centerSelected, 0);
+    });
 
     doc.getElementById('shipSelect')?.addEventListener('change', updateHighlights);
     doc.getElementById('targetSelect')?.addEventListener('change', updateHighlights);
