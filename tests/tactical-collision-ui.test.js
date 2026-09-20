@@ -5,6 +5,7 @@ const path = require('node:path');
 
 const Core = require('../src/pilot2v2-core.js');
 const Guard = require('../src/collision-guard.js');
+const Combat = require('../src/combat-rules.js');
 const data = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'data', 'historical_ships_1805.json'), 'utf8'));
 
 function read(name) {
@@ -43,7 +44,7 @@ test('swept collision detection does not invent a collision for distant parallel
   assert.equal(hit.collides, false);
 });
 
-test('collision consequences visibly affect hull, crew and fatigue', () => {
+test('collision consequences visibly affect hull crew fatigue and bow collision stops retained motion', () => {
   const state = Core.buildInitialState(data);
   const a = state.ships[0];
   const b = state.ships[2];
@@ -57,14 +58,93 @@ test('collision consequences visibly affect hull, crew and fatigue', () => {
   assert.ok(a.hull < hull);
   assert.ok(a.crew < crew);
   assert.equal(a.fatigue, fatigue + Core.collisionFatigueCost('TV'));
-  assert.match(state.log.at(-1), /Colisión durante el movimiento/);
+  assert.equal(result.retention, 0);
+  assert.equal(a.collisionMomentumRetention, 0);
+  assert.match(state.log.at(-1), /queda detenido/);
 });
 
-test('playable page wires swept collision guard and tactical player-facing overlays', () => {
+test('impact section controls next-turn momentum: bow 0 center 25 percent stern 50 percent', () => {
+  const state = Core.buildInitialState(data);
+  const ship = state.ships[0];
+  const other = state.ships[2];
+  ship.x = 200; ship.y = 200; ship.heading = 0;
+  other.x = 300; other.y = 200; other.heading = 90;
+  assert.equal(Guard.collisionMomentumRetention('BOW', ship, other), 0);
+  assert.equal(Guard.collisionMomentumRetention('CENTER', ship, other), 0.25);
+  assert.equal(Guard.collisionMomentumRetention('STERN', ship, other), 0.5);
+});
+
+test('exact rear collision preserves speed but raises rudder damage chance to 75 percent', () => {
+  const state = Core.buildInitialState(data);
+  const ship = state.ships[0];
+  const other = state.ships[2];
+  ship.x = 200; ship.y = 200; ship.heading = 0;
+  other.x = 200; other.y = 300; other.heading = 0;
+  const relation = Guard.sternAlignment(ship, other);
+  assert.equal(relation.offAxis, 0);
+  assert.equal(Guard.collisionMomentumRetention('STERN', ship, other), 1);
+  assert.equal(Guard.sternRudderDamageChance(ship, other), 0.75);
+});
+
+test('stern rudder risk drops continuously as the collision moves away from rudder-axis alignment', () => {
+  const state = Core.buildInitialState(data);
+  const ship = state.ships[0];
+  const other = state.ships[2];
+  ship.x = 200; ship.y = 200; ship.heading = 0;
+  other.x = 300; other.y = 300;
+  const chance = Guard.sternRudderDamageChance(ship, other);
+  assert.ok(chance > 0.25 && chance < 0.75);
+  assert.equal(Guard.collisionMomentumRetention('STERN', ship, other), 0.5);
+});
+
+test('very weak collision-zone mast may fall toward the collider and strongly entangle both ships', () => {
+  const state = Core.buildInitialState(data);
+  const ship = state.ships[0];
+  const other = state.ships[2];
+  ship.masts.fore.health = Math.floor(ship.masts.fore.max * 0.25);
+  const outcome = Guard.damageCollisionMast(state, ship, 'BOW', other, 1, () => 0.1);
+  assert.equal(outcome.key, 'fore');
+  assert.equal(outcome.fallen, true);
+  assert.equal(outcome.entangled, true);
+  assert.equal(ship.masts.fore.fallen, true);
+  assert.equal(ship.fallenMastTowardShipId, other.id);
+  assert.equal(ship.entangledWith, other.id);
+  assert.equal(other.entangledWith, ship.id);
+});
+
+test('carpenter cut party has deterministic 50 percent success and clears an entangled pair', () => {
+  const state = Core.buildInitialState(data);
+  const ship = state.ships[0];
+  const other = state.ships[2];
+  Guard.linkEntanglement(state, ship, other, 'main');
+  let result = Guard.resolveCutParty(state, ship, true, () => 0.50);
+  assert.equal(result.attempted, true);
+  assert.equal(result.success, false, '50 percent is strict below 0.50');
+  assert.equal(ship.entangledWith, other.id);
+
+  result = Guard.resolveCutParty(state, ship, true, () => 0.499999);
+  assert.equal(result.success, true);
+  assert.equal(ship.entangledWith, null);
+  assert.equal(other.entangledWith, null);
+});
+
+test('full-sail firing risk is 20 percent baseline and 30 percent when wind enters firing side', () => {
+  assert.equal(Combat.windEnteringBand(0, 90), 'ESTRIBOR');
+  assert.equal(Combat.windEnteringBand(0, 270), 'BABOR');
+  assert.equal(Combat.fullSailFireRisk(0, 90, 'ESTRIBOR'), 0.30);
+  assert.equal(Combat.fullSailFireRisk(0, 90, 'BABOR'), 0.20);
+  assert.equal(Combat.fullSailFireRisk(0, 270, 'BABOR'), 0.30);
+});
+
+test('playable page wires swept collision guard tactical overlays prototype rudder and combat privacy UI', () => {
   const html = read('pilot-2v2.html');
   const css = read('pilot-2v2.css');
   const polish = read('src/player-ui-polish.js');
+  const combatUi = read('src/combat-ui-rules.js');
   assert.match(html, /src\/collision-guard\.js/);
+  assert.match(html, /src\/prototype-rudder-runtime\.js/);
+  assert.match(html, /src\/combat-rules\.js/);
+  assert.match(html, /src\/combat-ui-rules\.js/);
   assert.match(html, /src\/player-ui-polish\.js/);
   assert.doesNotMatch(html, /Las reglas Velmad verificadas/);
   assert.match(css, /\.fire-row button\.fire-active/);
@@ -74,6 +154,6 @@ test('playable page wires swept collision guard and tactical player-facing overl
   assert.match(polish, /targetShipHighlight/);
   assert.match(polish, /threatShipHighlight/);
   assert.match(polish, /selectedBatteryHighlight/);
-  assert.match(polish, /Timón Velmad/);
-  assert.match(polish, /Artillería Velmad/);
+  assert.match(combatUi, /Carpinteros: cortar palo aferrado/);
+  assert.match(combatUi, /Oculta/);
 });
