@@ -10,9 +10,10 @@ Active implementation/validation branch: `feature/restore-prototype-ux-parity`.
 
 PR #2 — `Restore prototype interaction parity in historical 2v2 pilot` — remains **draft**. Do not merge it merely for convenience; mechanical and user-facing validation are still active gates.
 
-Latest playable implementation head: `e19e2425d4f2c4189fb4cc4a8c68cfe0b3f4c304`.
+Latest validated playable implementation head: `fef4b4e5bff54a8370a2365b28e5a3518eaa115b`.
 Latest sail-fatigue implementation commit: `a29741a112488dab0a33c1c804f05e52c6fde0f3`.
 ADR-0006 commit: `5cb8b9081a889e40deebf3e39232f463243bc48e`.
+ADR-0007 is the current inertia / raking-geometry decision.
 
 ## Current milestone
 
@@ -31,7 +32,7 @@ The historical 2v2 remains the active development/regression scenario for real s
 
 ADR-0004 remains the general technical policy: reproduce applicable explicit rules from the historical baseline and deterministic tests before changing them, and do not invent omitted algorithms and present them as source-derived.
 
-The **playable interface no longer displays the baseline product name**. Player-facing headings, labels, log text and injected controls are scrubbed to neutral simulator terminology. Internal research documents, ADRs, compliance files and source-attribution material keep the original source name where needed for provenance and auditability.
+The playable interface does not display the baseline product name. Internal research documents, ADRs, compliance files and source-attribution material keep source names where needed for provenance and auditability.
 
 Authoritative mechanical checklist remains:
 
@@ -75,43 +76,71 @@ The current branch includes the implemented/tested ammunition slice for round sh
 
 Source-omitted base-damage/range details, full crew-service restrictions, full-sail fire risk, morale dependencies and true two-broadside execution remain incomplete.
 
+## Translational inertia — added 2026-09-20
+
+Live testing correctly identified that movement still changed translational speed instantaneously. This was incompatible with the Historical 1v1 milestone requirement for inertia and with period seamanship's repeated concept of a vessel retaining or requiring `way`.
+
+`src/inertia-model.js` now adds a persistent two-dimensional motion vector:
+
+- the ordinary sail/wind/class/hull/rig/rudder model still computes the commanded displacement;
+- actual motion approaches that commanded vector progressively rather than snapping to it;
+- going to `NV` does **not** stop a moving ship instantly;
+- residual way decays over successive turns;
+- a ship starting without way accelerates progressively;
+- heading changes no longer redirect the whole translation instantaneously, because previous motion is carried into the new turn;
+- class response is slower for larger vessels and faster for smaller vessels;
+- current third-class response coefficient is `0.40` per turn;
+- after a collision only 25% of the previous motion vector is carried into the next turn;
+- the movement shadow uses the same inertia model, so the player sees the inertial destination before confirming.
+
+This is **PROJECT-RECONSTRUCTION**, not a literal recovered baseline algorithm. The baseline manual explicitly omits the detailed computer movement calculation. The rationale and historical evidence are recorded in `docs/decisions/ADR-0007-INERTIA_AND_RAKING_GEOMETRY.md`.
+
+Leeway, heel, sea-state response and quantitative hydrodynamic calibration remain future work.
+
+## Raking geometry — corrected 2026-09-20
+
+The former rake detector only required the attacker to lie inside the target's +/-15° bow/stern cone. That allowed an oblique partial-battery geometry to receive a bow/stern rake multiplier.
+
+`src/raking-geometry.js` now requires a T-like geometry:
+
+1. attacker within +/-15° of the defender's bow or stern longitudinal axis; and
+2. ship headings approximately perpendicular, within +/-15° of 90°.
+
+Therefore a broadside fired approximately down the target's long axis from ahead/astern receives the rake classification; an oblique L-like/diagonal position does not.
+
+Deterministic tests verify both a true stern-rake T position and an oblique position in the same stern cone that must remain an ordinary shot.
+
 ## Collision review — corrected 2026-09-20
 
-A live test exposed a real gap: the old collision code only tested ship geometry **after** movement. Two ships could therefore visually cross during simultaneous movement and finish separated, producing no collision consequence.
+The old collision code only tested geometry after movement, allowing ships to cross visually during simultaneous movement and finish apart without consequences.
 
-New `src/collision-guard.js` adds swept collision detection across the whole movement trajectory:
+`src/collision-guard.js` provides swept trajectory collision detection across the actual movement path. With inertia installed before the collision layer, the sweep now follows the inertial trajectory rather than the instantaneous commanded endpoint.
 
-- ship poses are sampled through the turn, including interpolated heading;
 - bow/centre/stern collision volumes are checked throughout the path;
-- a mid-turn hit stops both ships at the first detected contact pose instead of allowing them to pass through;
-- collision damage is applied to hull, rigging and crew;
-- collision fatigue is applied by current sail state;
+- a mid-turn hit stops both ships at first detected contact;
+- hull/rigging/crew damage and sail-dependent fatigue are applied;
 - stern contacts retain rudder-damage risk;
-- collision fatigue cannot be accidentally reduced by idle-recovery processing from the base turn resolver;
-- endpoint collisions already handled by the original collision path are not double-charged.
-
-Deterministic regressions cover a crossing-path collision whose endpoints are separated, a distant no-collision path, and visible hull/crew/fatigue consequences.
+- endpoint-only inherited collision geometry is reduced inside the inertia layer so the swept detector owns the meaningful physical contact path;
+- collision fatigue remains outside idle-recovery processing.
 
 ## Tactical readability — corrected 2026-09-20
 
-The playable map now exposes targeting state directly:
-
-- the ship targeted by the selected player vessel gets a red tactical ring labelled `OBJETIVO`;
-- if one or more enemy ships target the selected player vessel, that vessel gets a pulsing/dashed red ring labelled `APUNTADO` (or `APUNTADO ×N`);
-- the corresponding force-status cards receive the same red emphasis;
-- selecting `Babor` or `Estribor` now leaves the button visibly active;
-- the selected firing side is also marked by a red side indicator on the selected ship;
-- these overlays follow pan, zoom, fit-fleet, recenter buttons, reset/start and the `C` camera shortcut.
+- selected target gets a red `OBJETIVO` ring;
+- selected own ship gets a pulsing/dashed red `APUNTADO` ring when one or more enemies target it;
+- force-status cards receive matching emphasis;
+- Babor/Estribor buttons remain visibly selected;
+- selected firing side is marked on the ship;
+- overlays follow pan, zoom, fit-fleet, recenter, reset/start and the `C` shortcut.
 
 ## Validation / deployment
 
-Latest validated implementation commit: `e19e2425d4f2c4189fb4cc4a8c68cfe0b3f4c304`.
+Latest validated implementation commit: `fef4b4e5bff54a8370a2365b28e5a3518eaa115b`.
 
-Render deploy: `dep-dao223ff3r2c73ef49v0` — **live**.
+Render deploy: `dep-dao3lefavr4c73atgk1g` — **live**.
 
-The service build command is `npm install && npm test`; therefore the complete repository suite passed before the deployment went live.
+The service build command is `npm install && npm test`; therefore the complete repository suite passed before deployment.
 
-Validated suite: **55 tests, 0 failed** (previous 51 plus 4 collision/UI regressions).
+Validated suite: **60 tests, 0 failed** (previous 55 plus 5 inertia/raking regressions).
 
 Development service:
 
@@ -126,23 +155,17 @@ Stable reference service remains untouched.
 
 - ADR-0004: general complete-applicable-baseline policy.
 - ADR-0005: previous direct-extremes 30/30 reconstruction; superseded for playable sail-fatigue behavior.
-- ADR-0006: current rule, +10 fatigue per sail point crossed; explicit PROJECT RULE / DELIBERATE DIVERGENCE.
+- ADR-0006: current +10 fatigue per sail point crossed; explicit PROJECT RULE / DELIBERATE DIVERGENCE.
+- ADR-0007: persistent translational inertia as project reconstruction and strict T-like raking geometry.
 - Player-facing UI uses neutral simulator terminology; technical source documentation retains source attribution.
 
 ## Major work still incomplete
 
-Important remaining groups include morale/combat capability; remaining gunnery range/crew-service/fire dependencies; boarding/surrender/white flag/prizes; critical mast and dragging-mast rules; source-ambiguous magazine/captain criticals; four helm-damage states; five-level fire loop; scoring/end/fear; signals; exact wind-change/visibility; court-martial; and explicit time/turn conventions.
+Important remaining groups include morale/combat capability; remaining gunnery range/crew-service/fire dependencies; boarding/surrender/white flag/prizes; critical mast and dragging-mast rules; source-ambiguous magazine/captain criticals; four helm-damage states; five-level fire loop; scoring/end/fear; signals; exact wind-change/visibility; court-martial; explicit time/turn conventions; leeway; heel; and deeper sailing calibration.
 
 ## Next concrete task
 
-Unless user testing exposes another regression, the next coherent baseline slice is the morale / surrender / boarding dependency chain:
-
-1. implement exact morale loss/recovery triggers with unambiguous thresholds;
-2. implement surrender checks and one-turn white-flag state;
-3. implement boarding eligibility, ratio modifiers, casualties and crew-quality/fatigue effects;
-4. implement capture, prize-crew requirements and recapture behavior;
-5. add deterministic tests before marking those rows verified;
-6. continue afterward with critical mast/dragging-mast, four helm-damage states and the fire loop.
+User-facing validation of inertia/collision/raking now takes priority. Unless that exposes another regression, the next coherent baseline slice remains the morale / surrender / boarding dependency chain, followed by critical mast/dragging-mast, four helm-damage states and fire.
 
 ## Branch discipline
 
