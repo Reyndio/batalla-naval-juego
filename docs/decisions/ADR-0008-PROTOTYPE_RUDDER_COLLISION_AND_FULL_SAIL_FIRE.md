@@ -99,7 +99,7 @@ For the first playable collision-entanglement implementation:
 
 The +10 fatigue and 50% cutting success follow the source manual's fallen-mast cutting rule. The 30% critical-health threshold and 75% collision-entanglement probability are explicit project reconstructions for the owner-requested collision case. The general source rules for ordinary mast fall, wind-driven fall side and dragging-mast behavior remain separately applicable and are not replaced by this collision-specific rule.
 
-## Decision 4 — full-sail firing accuracy and fire risk
+## Decision 4 — full-sail firing accuracy, ignition and fire control
 
 The source manual explicitly states that when firing at full sail:
 
@@ -116,7 +116,21 @@ The owner additionally requires increased fire risk when wind enters through the
 
 The 30% figure is a **PROJECT-RECONSTRUCTION calibration**, not source-derived. It may be revised after historical/physical research without changing the underlying rule that the risk increases.
 
-This implementation creates fire state/level when ignition occurs. It does **not** claim the complete five-level fire subsystem is finished; propagation, damage and fire-fighting resolution remain their own implementation gate.
+Once a fire exists, the playable loop now implements the source level/control mechanics:
+
+- new fire begins at level 1; another declared fire raises one level, capped at 5;
+- without a fire-fighting party, fire rises one level each turn;
+- fire-fighting control chance is 50% at level 1, minus 10 percentage points per higher level;
+- a successful team reduces one level if the ship also fired or changed sail that turn, otherwise two levels;
+- a failed team has a 50% chance to worsen one level and 50% to remain unchanged;
+- assigning the fire-fighting party uses the existing +10% fatigue action;
+- level 3 deals 50 points to either hull or a standing mast and has 33% explosion risk;
+- level 4 deals 100 points to hull and 100 to a standing mast (or the unavailable mast damage is applied to hull when dismasted) and has 66% explosion risk;
+- level 5 puts the ship out of combat and represents crew abandonment;
+- explosion destroys the vessel;
+- fire transmits between entangled ships with probability `10% × source fire level` per turn.
+
+Other independent fire triggers belonging to unresolved critical-hit mechanics remain gated by their own source sections; the fire **state/progression/control loop itself is now playable**.
 
 ## Decision 5 — enemy fatigue is hidden
 
@@ -126,7 +140,7 @@ This is an information-design rule and does not alter the simulation's internal 
 
 ## Validation requirements
 
-Deterministic tests must cover:
+Deterministic tests cover:
 
 - all nine helm positions and prototype angle/factor/change/amplitude tables;
 - TV `±4` prohibition and progressive access to `±3`;
@@ -134,12 +148,13 @@ Deterministic tests must cover:
 - bow/centre/stern/exact-astern collision momentum retention;
 - alignment-dependent stern rudder risk reaching 75% exactly astern;
 - critically weak mast fall/entanglement and 50% carpenter release check;
-- full-sail 20%/30% fire-risk calculation;
-- playable wiring for hidden enemy fatigue and carpenter action.
+- full-sail 20%/30% fire-risk calculation and actual ignition;
+- unattended fire escalation, fire-control percentages, success/failure reduction/escalation, level-3/4 damage and explosion risk, and entangled-fire transmission;
+- playable wiring for hidden enemy fatigue, carpenter action and fire-fighting action.
 
 ## Consequences
 
-The project now deliberately separates three evidence layers:
+The project deliberately separates three evidence layers:
 
 1. source-manual mechanics retained for provenance and historical baseline;
 2. stable-prototype behavior restored where the user explicitly requires the established playable control model;
