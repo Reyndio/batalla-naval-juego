@@ -19,6 +19,10 @@ function sequence(values, fallback = 0.99) {
   return () => i < values.length ? values[i++] : fallback;
 }
 
+function close(actual, expected, tolerance = 1e-12) {
+  assert.ok(Math.abs(actual - expected) < tolerance, `${actual} should equal ${expected}`);
+}
+
 test('unattended fire rises one level per turn', () => {
   const { state, ship } = stateAndShip();
   ship.fireLevel = 1;
@@ -31,10 +35,10 @@ test('unattended fire rises one level per turn', () => {
 });
 
 test('firefighting control chance falls ten points per fire level and successful free team reduces two levels', () => {
-  assert.equal(Combat.fireControlChance(1), 0.50);
-  assert.equal(Combat.fireControlChance(2), 0.40);
-  assert.equal(Combat.fireControlChance(3), 0.30);
-  assert.equal(Combat.fireControlChance(4), 0.20);
+  close(Combat.fireControlChance(1), 0.50);
+  close(Combat.fireControlChance(2), 0.40);
+  close(Combat.fireControlChance(3), 0.30);
+  close(Combat.fireControlChance(4), 0.20);
   const { state, ship } = stateAndShip();
   ship.fireLevel = 2;
   ship.onFire = true;
@@ -100,7 +104,7 @@ test('entangled fire transmits with ten percent per source fire level', () => {
   const events = Combat.transmitEntangledFire(state, () => 0.299999, new Set());
   const event = events.find(e => e.from === a.id && e.to === b.id && e.ignited);
   assert.ok(event);
-  assert.ok(Math.abs(event.chance - 0.30) < 1e-12);
+  close(event.chance, 0.30);
   assert.equal(b.fireLevel, 1);
   assert.equal(b.onFire, true);
 });
