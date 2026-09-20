@@ -56,8 +56,8 @@ Recovery/effects:
 Current implementation:
 
 - one-broadside, collision, recovery, shooting-quality and double-reload effects are implemented/tested;
-- the new carpenter/cutting action has an owning loop, costs +10% on the turn assigned, and uses the source 50% cutting-success rule;
-- fire-fighting owning loop remains incomplete;
+- carpenter/cutting and fire-fighting actions now have owning loops and each costs +10% on the assigned turn;
+- carpenter cutting uses the source 50% success rule;
 - true two-broadside-in-one-turn execution remains absent;
 - sail-change fatigue is **PROJECT-DIVERGENCE** under ADR-0006: `NV→PV→MV→TV`, +10% for each adjacent point crossed, so direct jumps cost 10/20/30 symmetrically.
 
@@ -200,7 +200,7 @@ Current implementation:
 
 - ammo families, modifiers, per-band loading, double reload, <=112 forced hull, target-sail factors, shooter NV/TV accuracy modifiers, upperworks/carronade exclusion and wind allocation are implemented/tested;
 - TV accuracy penalty is active;
-- **20% full-sail ignition risk is now implemented after an actual broadside**;
+- **20% full-sail ignition risk is implemented after an actual broadside**;
 - owner-approved PROJECT-RECONSTRUCTION raises that risk to 30% when wind enters through the firing side (ADR-0008);
 - source-omitted base-damage/range curve, literal long-range envelope, insufficient-crew gun service, morale consequences and true both-broadsides execution remain incomplete.
 
@@ -322,7 +322,7 @@ Source:
 
 Current implementation:
 
-- cutting-party +10 fatigue and 50% success now have a playable owning action;
+- cutting-party +10 fatigue and 50% success have a playable owning action;
 - collision-specific weak mast may fall toward the colliding ship and entangle both; current project values are <=30% health, 50% fall check and 75% entanglement;
 - entangled pair has no translational movement until cutting succeeds;
 - ordinary non-collision 50% tangle, wind-driven fall side, covered-side firing/fire risk, dragging auto-turn and 90% cap remain incomplete.
@@ -371,9 +371,24 @@ Rules:
 - failure 50% +1 /50% remain;
 - collided/entangled transmit chance10% x fire level/turn.
 
-Current implementation now has persistent `fireLevel`/`onFire` state and an actual full-sail broadside can ignite level1 at source 20%. Wind entering firing side raises the playable probability to project-calibrated30%. The remaining progression, damage, explosion, firefighting and transmission loop is not yet implemented.
+Current implementation:
 
-Status: **PARTIAL**.
+- persistent levels1–5 and `onFire` state;
+- new fire starts level1 and later declarations increment one level;
+- unattended fire rises one level/turn;
+- fire-fighting action costs +10 fatigue/turn;
+- control chance is exactly50% at L1 minus10pp per higher level;
+- successful control reduces1 when also firing/changing sail, otherwise2;
+- failed control has exact50/50 worsen/remain split;
+- L3 applies50 hull-or-mast damage plus33% explosion risk;
+- L4 applies100 hull +100 mast damage, or redirects unavailable mast damage to hull when dismasted, plus66% explosion risk;
+- L5 disables the ship as abandoned/out-of-combat; explosion destroys it;
+- entangled fire transmission uses10% x source fire level/turn;
+- full-sail actual broadside ignition uses source20%, raised to project-calibrated30% when wind enters through the firing side.
+
+Unresolved fire-related dependencies remain outside this loop: source-ambiguous critical-hit/magazine triggers in section18, and ordinary fallen-mast covered-side fire triggers in section17.
+
+Status: **VERIFIED for the explicit fire state/progression/control/damage/transmission loop; dependent external fire triggers remain PARTIAL in their owning sections**.
 
 ## 21. Fear / preservation incentive
 
@@ -441,7 +456,7 @@ Do not invent these algorithms and label them source-derived. Stable-prototype b
 
 # Current source-verified / project-rule slice — 2026-09-20
 
-Source-verified components currently include Hull0/1/sinking, current four-ship class dependency, baseline 0/1/2 helm logic as a source reference, head-to-wind tacking rule, windward/leeward fire allocation, actual-carronade range table, and several crew-quality shooting mechanics.
+Source-verified components currently include Hull0/1/sinking, current four-ship class dependency, baseline 0/1/2 helm logic as a source reference, head-to-wind tacking rule, windward/leeward fire allocation, actual-carronade range table, several crew-quality shooting mechanics, and the explicit fire state/progression/control/damage/transmission loop.
 
 The playable runtime intentionally differs in important areas:
 
@@ -449,7 +464,7 @@ The playable runtime intentionally differs in important areas:
 - ADR-0007: persistent translational inertia and strict T-like rake geometry;
 - ADR-0008: stable-prototype nine-position helm; section-specific collision momentum; alignment-based stern rudder risk; collision weak-mast/entanglement behavior; wind-amplified full-sail ignition; hidden enemy fatigue.
 
-A substantial ammunition/loading slice is implemented, but source-omitted base damage/range, crew service, morale and complete fire dependencies remain open.
+A substantial ammunition/loading slice is implemented, but source-omitted base damage/range, crew service and morale remain open. Fire progression itself is now implemented; unresolved fire triggers remain tied to sections17/18.
 
 # Release gate
 
