@@ -13,7 +13,7 @@ Purpose: exhaustive implementation gate. Nothing in this file is optional merely
 - **SOURCE-OMITTED** — the manual explicitly says the detailed algorithm was omitted because the computer automated it.
 - **PROJECT-RECONSTRUCTION** — playable behavior chosen from non-canonical reconstruction evidence where the v1.2 text is conflicting or incomplete; never presented as literal Velmad text.
 
-Verification evidence for the current Hull 0 / fatigue / manoeuvre slice is in `tests/velmad-hull-fatigue.test.js` and `tests/velmad-manoeuvre.test.js`.
+Verification evidence for the current Hull 0 / fatigue / manoeuvre / gunnery slice is in `tests/velmad-hull-fatigue.test.js`, `tests/velmad-manoeuvre.test.js`, and `tests/velmad-gunnery.test.js`.
 
 ---
 
@@ -65,9 +65,11 @@ Current implementation evidence:
 - one broadside +10, both broadsides +30, making full sail +30, no sail to few/medium +20, collision 60/40/0, recovery 10 / >80 recovery 20 are encoded/tested;
 - firing effectiveness and eligibility use the four crew-quality fatigue tables;
 - firing fatigue is generated only when the ship is actually eligible to fire;
-- +10 hooks exist for double-shot reload, fire-fighting and cutting parties, while those owning subsystems remain incomplete;
-- direct extreme sail orders are now playable as `NV→TV +30` and `TV→NV +30` in one action;
-- that 30/30 extreme rule is **PROJECT-RECONSTRUCTION**, documented by ADR-0005, because the English v1.2 text simultaneously contains the conflicting +40 `Collect all the sail` line;
+- double-shot reload now has an owning action loop and exact +10% per band behavior; +10 hooks for fire-fighting and cutting parties remain pending their complete owning subsystems;
+- direct extreme sail orders are playable as `NV→TV +30` and `TV→NV +30` in one action;
+- the 30/30 reconstruction applies specifically to the direct extreme transition and is **not** generalized to `PV/MV→NV`; a regression test verifies `PV→NV` does not receive the +30 extreme charge;
+- the explicit `Making full sail +30` behavior remains active when the ordered sail state is TV;
+- the 30/30 extreme rule is **PROJECT-RECONSTRUCTION**, documented by ADR-0005, because the English v1.2 text simultaneously contains the conflicting +40 `Collect all the sail` line;
 - true two-broadside-in-one-turn execution is still absent even though its +30 helper exists.
 
 Status: **PARTIAL / SOURCE-AMBIGUOUS with PROJECT-RECONSTRUCTION for the extreme sail transition** — do not mark the 30/30 choice as literal-text VERIFIED unless stronger source evidence resolves the conflict.
@@ -245,7 +247,28 @@ Status: **PARTIAL** — shooting and manoeuvring portions verified; boarding por
 - one broadside costs +10% fatigue;
 - insufficient crew means only guns with enough servants may fire.
 
-Status: **PARTIAL** — round/grape/double concepts and side gun losses exist, but the full four-ammunition model, exact loading restrictions, distance/sail modifiers and crew-service rule remain incomplete.
+Current implementation evidence:
+
+- all four ammunition families are represented; standard selectable reload ammunition is round, bar/chain, and grape, while double shot is a distinct reload action;
+- round-vs-rigging 50%, bar/chain-vs-hull 50%, long-range bar/chain /3, grape hull 50%, grape rigging 1/3, and double-shot explicit power/range modifiers are encoded/tested;
+- each broadside band tracks its own loaded ammunition; firing a band reloads the selected standard ammunition for that same band for the next turn while the opposite band retains its load;
+- double shot requires round shot already loaded in that band, blocks that band from firing during reload, costs +10 fatigue, and becomes loaded for the following turn;
+- at <=112 m effective aim is forced to hull;
+- target sail-state rigging modifiers MV 1.0, TV 1.5, PV 0.9, NV 0.5 are encoded/tested;
+- shooter NV applies the equivalent of 10 less fatigue; TV applies 10 more and excludes upperworks long guns and carronades from available power;
+- actual carronades are integrated by the explicit range contribution table in section 10;
+- the exact windward/leeward distribution layer is integrated by section 9.
+
+Still incomplete / deliberately not claimed:
+
+- the inherited stable base-damage/range curve remains in place because the manual explicitly omits the full computer damage algorithm; it does not yet reproduce the stated one-ship-length/10%-per-length envelope or general little-over-10-length range behavior;
+- round-shot rigging damage beyond 7 lengths cannot yet exercise the literal 7-length cap while the inherited stable firing envelope ends earlier;
+- the full-sail 20% fire-risk consequence awaits the fire subsystem;
+- insufficient-crew gun-service restriction is not yet implemented;
+- morale consequences of grapeshot await morale;
+- true both-broadsides-in-one-turn execution remains absent.
+
+Status: **PARTIAL** — explicit ammunition families, per-band loading, double-shot reload restrictions, <=112 m forced-hull rule, sail-state modifiers, and several exact ammunition multipliers are implemented/tested; source-omitted base damage/range and dependent fire/morale/crew-service pieces remain open.
 
 ## 9. Wind position and shooting effects
 
@@ -261,7 +284,15 @@ Target to leeward:
 - hull aim: 100% hull, 0% rigging;
 - rigging aim: 40% hull, 60% rigging.
 
-Status: **MISSING**.
+Implementation:
+
+- the 30° total fork is represented as ±15° around the wind axis and opposite/leeward axis;
+- target-windward and target-leeward classification is deterministic and tested;
+- all four stated damage allocations plus normal crosswind 90/10 fallback are implemented before hull/rigging application.
+
+Verification: `tests/velmad-gunnery.test.js`.
+
+Status: **VERIFIED** for the explicit v1.2 windward/leeward classification and damage-allocation table.
 
 ## 10. Carronades
 
@@ -271,7 +302,16 @@ Contribution to broadside power:
 - at 225 m or less: one half;
 - at 150 m or less: 100%.
 
-Status: **MISSING/PARTIAL** — carronades are recorded historically but not yet applied by this exact range table.
+Implementation:
+
+- actual historical pieces typed as `carronade` contribute at 0 beyond 300 m, 1/3 at <=300 m, 1/2 at <=225 m, and full power at <=150 m;
+- the contribution derives from each ship's historical fitted carronade calibres/counts;
+- Spanish obuses are kept distinct and are not silently treated as carronades without evidence;
+- full sail excludes the upperworks/carronade contribution as part of the section-8 full-sail firing restriction.
+
+Verification: `tests/velmad-gunnery.test.js`.
+
+Status: **VERIFIED for actual carronades in the current historical data path**. Spanish obus equivalence remains an evidence question rather than an assumed rule.
 
 ## 11. Boarding
 
@@ -493,7 +533,7 @@ Status: **MISSING**.
 - movement is closer to 2.5 minutes, deliberately compressed;
 - one rules `ship length` = 75 m, including bowsprit, selected as a round measure.
 
-Status: **MISSING/PARTIAL** — must become explicit constants/metadata wherever applicable.
+Status: **MISSING/PARTIAL** — 75 m is now an explicit gunnery constant where required, but turn/movement timing conventions are not yet represented as simulator metadata/mechanics.
 
 ## 28. Algorithms explicitly omitted by the v1.2 manual
 
@@ -504,7 +544,7 @@ The manual explicitly omits because the original computer handled them:
 
 Status: **SOURCE-OMITTED**.
 
-These algorithms must not be invented and labelled as Velmad. Stable/original implementation behavior and later historical/technical research must be identified separately as evidence.
+These algorithms must not be invented and labelled Velmad. Stable/original implementation behavior and later historical/technical research must be identified separately as evidence.
 
 ---
 
@@ -516,9 +556,13 @@ Verified explicit mechanics now include:
 - current four-ship vessel classification/dependency path (section 3);
 - explicit rudder-point/history/class manoeuvre rules (section 5);
 - explicit tacking stop/exit rule (section 6);
+- windward/leeward firing classification and allocation (section 9);
+- actual-carronade range contribution table (section 10);
 - crew-quality shooting and manoeuvre portions, while boarding remains pending (section 7 stays PARTIAL).
 
-Fatigue remains PARTIAL because dependent actions/boarding/two-broadside execution are incomplete and because the translated sail-extreme lines conflict. The current playable `NV↔TV = 30/30` rule is explicitly a PROJECT-RECONSTRUCTION under ADR-0005, not a claim that the +40 line never existed.
+A substantial ammunition/loading slice in section 8 is now implemented and tested, but section 8 remains PARTIAL because the manual-omitted base damage algorithm, current inherited range envelope, crew-service, fire and morale dependencies are not complete.
+
+Fatigue remains PARTIAL because dependent fire-fighting/cutting/boarding/two-broadside execution are incomplete and because the translated sail-extreme lines conflict. The current playable `NV↔TV = 30/30` rule is explicitly a PROJECT-RECONSTRUCTION under ADR-0005, not a claim that the +40 line never existed. The reconstructed +30 reverse cost is limited to direct `TV→NV`; intermediate `PV/MV→NV` transitions do not inherit it.
 
 # Release gate
 
