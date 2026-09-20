@@ -99,8 +99,8 @@
   function collisionFatigueCost(sail) { return FATIGUE_COLLISION[sail] == null ? 0 : FATIGUE_COLLISION[sail]; }
   function sailChangeFatigueCost(fromSail, toSail) {
     if (fromSail === toSail) return 0;
+    if (fromSail === 'TV' && toSail === 'NV') return FATIGUE_COLLECT_ALL_SAIL;
     if (toSail === 'TV') return FATIGUE_MAKE_FULL_SAIL;
-    if (toSail === 'NV') return FATIGUE_COLLECT_ALL_SAIL;
     if (fromSail === 'NV' && (toSail === 'PV' || toSail === 'MV')) return FATIGUE_NV_PV;
     return 0;
   }
@@ -469,6 +469,8 @@
     if (!browserStateRef || !root || !root.document) return false;
     const select=root.document.getElementById('shipSelect'),ship=select&&browserStateRef.ships.find(s=>s.id===select.value);
     if(!ship||!activeShip(ship)||!SAIL_ORDER.includes(targetSail))return false;
+    const requiredFrom=targetSail==='NV'?'TV':targetSail==='TV'?'NV':null;
+    if(!requiredFrom||ship.sail!==requiredFrom)return false;
     if(!ship.order)ship.order=defaultOrder(ship,null);ship.order.sail=targetSail;ship.confirmed=false;
     select.dispatchEvent(new Event('change',{bubbles:true}));return true;
   }
@@ -485,11 +487,11 @@
       if(rudderButtons.previousElementSibling)rudderButtons.previousElementSibling.textContent='Timón Velmad — 1 punto = 15° · T = 2 puntos';
     }
     const panel=doc.getElementById('leftPanel'); if(!panel || doc.getElementById('velmadDamageControl')) return;
-    const box=doc.createElement('section'); box.id='velmadDamageControl'; box.innerHTML='<h3>Acciones Velmad</h3><div id="velmadHullState" class="small">Casco: —</div><button id="pumpHullAction" style="width:100%;margin-top:6px">Bombear/reparar casco 0→1 (+20% fatiga)</button><div class="two-col" style="margin-top:6px"><button id="velmadNoSail">Recoger a NV (+30%)</button><button id="velmadFullSail">Largar a TV (+30%)</button></div><div class="small" style="margin-top:4px">Reconstrucción jugable 30/30 para los extremos NV↔TV; el PDF inglés v1.2 conserva una línea conflictiva de 40%.</div>';
-    panel.appendChild(box); const button=box.querySelector('#pumpHullAction'), status=box.querySelector('#velmadHullState');
-    box.querySelector('#velmadNoSail').addEventListener('click',()=>orderSelectedExtremeSail('NV'));
-    box.querySelector('#velmadFullSail').addEventListener('click',()=>orderSelectedExtremeSail('TV'));
-    function refresh(){const select=doc.getElementById('shipSelect'),ship=browserStateRef&&select&&browserStateRef.ships.find(s=>s.id===select.value);if(!ship){status.textContent='Casco: —';button.disabled=true;return;}const ordered=!!(ship.order&&ship.order.repairHull);status.textContent=ship.sinking?'HUNDIÉNDOSE — fuera de combate':ship.hull===0?(ordered?'CASCO 0 — bombeo/reparación ordenado':'CASCO 0 — batería baja inoperativa, velocidad máx. 70%'):ship.hull===1?'CASCO 1 — velocidad máx. 70%':`Casco ${Math.round(ship.hull)} HP · clase Velmad ${ship.velmadClass}`;button.disabled=!canRepairHullZeroToOne(ship)||ordered;}
+    const box=doc.createElement('section'); box.id='velmadDamageControl'; box.innerHTML='<h3>Acciones Velmad</h3><div id="velmadHullState" class="small">Casco: —</div><button id="pumpHullAction" style="width:100%;margin-top:6px">Bombear/reparar casco 0→1 (+20% fatiga)</button><div class="two-col" style="margin-top:6px"><button id="velmadNoSail">TV→NV directo (+30%)</button><button id="velmadFullSail">NV→TV directo (+30%)</button></div><div class="small" style="margin-top:4px">Reconstrucción jugable 30/30 sólo para la transición directa entre los extremos NV↔TV; el PDF inglés v1.2 conserva una línea conflictiva de 40%.</div>';
+    panel.appendChild(box); const button=box.querySelector('#pumpHullAction'), status=box.querySelector('#velmadHullState'), noSailButton=box.querySelector('#velmadNoSail'), fullSailButton=box.querySelector('#velmadFullSail');
+    noSailButton.addEventListener('click',()=>orderSelectedExtremeSail('NV'));
+    fullSailButton.addEventListener('click',()=>orderSelectedExtremeSail('TV'));
+    function refresh(){const select=doc.getElementById('shipSelect'),ship=browserStateRef&&select&&browserStateRef.ships.find(s=>s.id===select.value);if(!ship){status.textContent='Casco: —';button.disabled=true;noSailButton.disabled=true;fullSailButton.disabled=true;return;}const ordered=!!(ship.order&&ship.order.repairHull);status.textContent=ship.sinking?'HUNDIÉNDOSE — fuera de combate':ship.hull===0?(ordered?'CASCO 0 — bombeo/reparación ordenado':'CASCO 0 — batería baja inoperativa, velocidad máx. 70%'):ship.hull===1?'CASCO 1 — velocidad máx. 70%':`Casco ${Math.round(ship.hull)} HP · clase Velmad ${ship.velmadClass}`;button.disabled=!canRepairHullZeroToOne(ship)||ordered;noSailButton.disabled=ship.sail!=='TV';fullSailButton.disabled=ship.sail!=='NV';}
     button.addEventListener('click',()=>{const select=doc.getElementById('shipSelect'),ship=browserStateRef&&select&&browserStateRef.ships.find(s=>s.id===select.value);if(!ship||!canRepairHullZeroToOne(ship))return;if(!ship.order)ship.order=defaultOrder(ship,null);ship.order.repairHull=true;ship.confirmed=false;select.dispatchEvent(new Event('change',{bubbles:true}));refresh();});
     doc.getElementById('shipSelect')?.addEventListener('change',()=>setTimeout(refresh,0)); setInterval(refresh,1000); refresh();
   }
