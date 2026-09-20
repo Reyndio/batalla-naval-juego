@@ -68,7 +68,7 @@ test('playable page wires swept collision guard and tactical player-facing overl
   assert.match(html, /src\/player-ui-polish\.js/);
   assert.doesNotMatch(html, /Las reglas Velmad verificadas/);
   assert.match(css, /\.fire-row button\.fire-active/);
-  assert.match(css, /\.target-ring/);
+  assert.match(css, /\.tactical-ring/);
   assert.match(css, /\.threat-ring/);
   assert.match(css, /\.battery-side-highlight/);
   assert.match(polish, /targetShipHighlight/);
