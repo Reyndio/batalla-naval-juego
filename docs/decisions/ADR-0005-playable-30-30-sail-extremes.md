@@ -22,7 +22,10 @@ For the playable historical-simulator branch:
 
 - direct `NV → TV` costs +30% fatigue;
 - direct `TV → NV` costs +30% fatigue;
-- the extreme transition occurs in one ordered action rather than being forced through PV/MV intermediate turns;
+- the 30/30 reconstruction applies specifically to the one-action transition between those two extremes;
+- it must **not** be generalized as `any sail state → NV = +30%`;
+- `PV → NV` and `MV → NV` therefore do not inherit the reconstructed +30% extreme cost;
+- the explicit `Making full sail: +30%` line remains active for an order that ends at `TV`, including from PV/MV;
 - `NV → PV` and `NV → MV` retain the explicit +20% rule;
 - the literal +40% line remains recorded in the compliance matrix as a source conflict.
 
@@ -33,6 +36,8 @@ The 30/30 rule is therefore labelled **PROJECT RECONSTRUCTION**, not `VERIFIED l
 This choice keeps the game playable, matches direct recollection of the original game, preserves the unambiguous 30% `Making full sail` line, and avoids inventing an undocumented distinction merely to make the translated 30/40 wording internally consistent.
 
 Historical seamanship research reviewed during the decision did not establish a general fixed rule that gathering all sail was intrinsically one third more fatiguing than making all sail. Weather and sail load can make shortening sail substantially harder in particular conditions, but that is not evidence for a universal 40/30 fatigue ratio.
+
+The implementation also keeps the direct extreme action distinct in the UI: the explicit `TV→NV directo (+30%)` action is only enabled while actually at TV, and `NV→TV directo (+30%)` only while actually at NV. Ordinary intermediate sail orders continue through the main sail controls.
 
 ## Reversibility
 
