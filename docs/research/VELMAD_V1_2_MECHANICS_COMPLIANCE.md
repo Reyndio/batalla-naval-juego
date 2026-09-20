@@ -12,6 +12,7 @@ Purpose: exhaustive implementation gate. Nothing in this file is optional merely
 - **SOURCE-AMBIGUOUS** — the manual states a rule, but the translated wording does not define one unique algorithm safely enough to encode without further source work.
 - **SOURCE-OMITTED** — the manual explicitly says the detailed algorithm was omitted because the computer automated it.
 - **PROJECT-RECONSTRUCTION** — playable behavior chosen from non-canonical reconstruction evidence where the v1.2 text is conflicting or incomplete; never presented as literal Velmad text.
+- **PROJECT-DIVERGENCE** — an explicit project rule intentionally differs from recoverable literal Velmad text and therefore cannot count toward literal parity.
 
 Verification evidence for the current Hull 0 / fatigue / manoeuvre / gunnery slice is in `tests/velmad-hull-fatigue.test.js`, `tests/velmad-manoeuvre.test.js`, and `tests/velmad-gunnery.test.js`.
 
@@ -62,17 +63,17 @@ Recovery/effects:
 
 Current implementation evidence:
 
-- one broadside +10, both broadsides +30, making full sail +30, no sail to few/medium +20, collision 60/40/0, recovery 10 / >80 recovery 20 are encoded/tested;
+- one broadside +10, both-broadsides helper +30, collision 60/40/0, recovery 10 / >80 recovery 20 are encoded/tested;
 - firing effectiveness and eligibility use the four crew-quality fatigue tables;
 - firing fatigue is generated only when the ship is actually eligible to fire;
-- double-shot reload now has an owning action loop and exact +10% per band behavior; +10 hooks for fire-fighting and cutting parties remain pending their complete owning subsystems;
-- direct extreme sail orders are playable as `NV→TV +30` and `TV→NV +30` in one action;
-- the 30/30 reconstruction applies specifically to the direct extreme transition and is **not** generalized to `PV/MV→NV`; a regression test verifies `PV→NV` does not receive the +30 extreme charge;
-- the explicit `Making full sail +30` behavior remains active when the ordered sail state is TV;
-- the 30/30 extreme rule is **PROJECT-RECONSTRUCTION**, documented by ADR-0005, because the English v1.2 text simultaneously contains the conflicting +40 `Collect all the sail` line;
+- double-shot reload has an owning action loop and exact +10% per-band behavior; +10 hooks for fire-fighting and cutting parties remain pending their complete owning subsystems;
+- sail-change fatigue is now an explicit **PROJECT-DIVERGENCE** under ADR-0006: the four sail states are ordered `NV→PV→MV→TV`, every adjacent point crossed costs +10%, two-point jumps cost +20%, and three-point `NV↔TV` jumps cost +30%;
+- the sail-point rule is symmetric and applies whether the transition is ordered directly or progressively; a progressive one-point change costs +10% on each turn;
+- deterministic tests cover the complete 4×4 sail-transition cost matrix and the live-user regression case `PV→NV`, which now costs +10 rather than being treated as idle recovery;
+- this project rule intentionally differs from literal v1.2 lines including `NV→PV/MV +20`, the general `Making full sail +30`, and the conflicting +30/+40 sail-removal wording;
 - true two-broadside-in-one-turn execution is still absent even though its +30 helper exists.
 
-Status: **PARTIAL / SOURCE-AMBIGUOUS with PROJECT-RECONSTRUCTION for the extreme sail transition** — do not mark the 30/30 choice as literal-text VERIFIED unless stronger source evidence resolves the conflict.
+Status: **PARTIAL / PROJECT-DIVERGENCE** — the playable sail-fatigue model is intentionally not literal Velmad v1.2 and therefore cannot be marked VERIFIED parity. Other fatigue-dependent systems also remain incomplete.
 
 ## 3. Vessel classes
 
@@ -548,7 +549,7 @@ These algorithms must not be invented and labelled Velmad. Stable/original imple
 
 ---
 
-# Current verified / reconstructed slice — 2026-09-20
+# Current verified / project-rule slice — 2026-09-20
 
 Verified explicit mechanics now include:
 
@@ -560,13 +561,13 @@ Verified explicit mechanics now include:
 - actual-carronade range contribution table (section 10);
 - crew-quality shooting and manoeuvre portions, while boarding remains pending (section 7 stays PARTIAL).
 
-A substantial ammunition/loading slice in section 8 is now implemented and tested, but section 8 remains PARTIAL because the manual-omitted base damage algorithm, current inherited range envelope, crew-service, fire and morale dependencies are not complete.
+A substantial ammunition/loading slice in section 8 is implemented and tested, but section 8 remains PARTIAL because the manual-omitted base damage algorithm, current inherited range envelope, crew-service, fire and morale dependencies are not complete.
 
-Fatigue remains PARTIAL because dependent fire-fighting/cutting/boarding/two-broadside execution are incomplete and because the translated sail-extreme lines conflict. The current playable `NV↔TV = 30/30` rule is explicitly a PROJECT-RECONSTRUCTION under ADR-0005, not a claim that the +40 line never existed. The reconstructed +30 reverse cost is limited to direct `TV→NV`; intermediate `PV/MV→NV` transitions do not inherit it.
+Fatigue remains PARTIAL and now carries an explicit PROJECT-DIVERGENCE. ADR-0006 supersedes ADR-0005 for playable sail-change fatigue: each crossed sail point in `NV↔PV↔MV↔TV` costs +10%, so direct jumps cost 10/20/30 according to distance. This rule is deliberately not presented as literal Velmad v1.2.
 
 # Release gate
 
-The historical simulator must not be described as having `Velmad v1.2 mechanical parity` until every applicable row above is VERIFIED and every SOURCE-AMBIGUOUS/SOURCE-OMITTED item is explicitly resolved/documented.
+The historical simulator must not be described as having `Velmad v1.2 mechanical parity` until every applicable row above is VERIFIED and every SOURCE-AMBIGUOUS/SOURCE-OMITTED/PROJECT-DIVERGENCE item is explicitly resolved or consciously accepted as a post-baseline replacement.
 
 After that baseline exists, changes follow ADR-0001:
 
