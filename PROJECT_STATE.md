@@ -1,167 +1,178 @@
 # PROJECT STATE
 
-Last updated: 2026-09-18
+Last updated: 2026-09-20
 
-## Canonical branch
+## Canonical integration branch
 
 `develop/historical-simulator`
 
-Validated development-deployment branch: `feature/historical-2v2-pilot`
+## Active work / validation branch
+
+`feature/restore-prototype-ux-parity`
+
+Open draft PR: **#2 — Restore prototype interaction parity in historical 2v2 pilot**
+
+Current PR head recorded at handoff: `3bb370f3e7aac7db9eafae18b9ebb9429c23c907`.
+
+**Fresh-chat rule:** after reading this file on the canonical branch, switch conceptually to `feature/restore-prototype-ux-parity` before inspecting or changing the current implementation. Do not continue coding from the older canonical snapshot as if it were current.
 
 ## Current milestone
 
 **Milestone 1 — Historical 1v1 Simulator**
 
-The Historical 1v1 milestone remains the primary polished goal. The limited historical 2v2 pilot is now a playable validated development slice and regression scenario, not the final fleet engine.
+The 2v2 is a development/regression scenario used to validate historical ship data, multi-ship control and shared mechanics. It is not the final fleet architecture.
 
-## Current status
+## Immutable / stable references
 
-- Original playable prototype remains frozen at `archive/prototype-v1`, commit `31fe6620cf262bbe99cf680363a6962d4ddc26f8`.
-- `main` remains the stable/default discovery branch and was not modified by this pilot.
-- Canonical integration branch remains `develop/historical-simulator`.
-- Stable Render reference service `batalla-naval-juego-1` remains on `main` and was not altered.
-- Velmad v1.2 remains the foundational mechanics baseline, subject to evidence-based historical improvement.
-- National-side rule remains fixed: one coherent navy per side; no mixed-national allied teams in this pilot.
-- **PR #1, `Historical 2v2 pilot: playable four-ship vertical slice`, was validated and squash-merged into `develop/historical-simulator` on 2026-09-18.**
+- Frozen original prototype: `archive/prototype-v1`, commit `31fe6620cf262bbe99cf680363a6962d4ddc26f8`.
+- Stable/default `main` remains the discovery/stable branch.
+- Stable working Render reference: `batalla-naval-juego-1`, service `srv-d11jigk9c44c73fdfnn0`, reference commit `573e809c19645c7a8a611433502715aa5c2cf504`.
+- The stable working game is the **minimum functional behavior floor** during migration: no useful mechanic already present there may silently disappear.
 
-### Historical 2v2 ship set
+## Historical 2v2 ship set
 
 Selected October 1805 configurations:
 
-- **Royal Navy**
-  - HMS Bellerophon: 28×32-pdr, 28×18-pdr, 18×9-pdr, 2×32-pdr carronades, 6×18-pdr carronades; working action complement 522.
-  - HMS Conqueror: 28×32-pdr, 30×18-pdr, 16×9-pdr, 2×32-pdr carronades, 6×18-pdr carronades; working action complement 573.
-- **Real Armada**
-  - Montañés: 28×36-lb, 30×18-lb, 8×8-lb, 10×30-lb obuses; 76 counted principal combat pieces; working complement 749.
-  - Bahama: 28×24-lb, 30×18-lb, 10×8-lb, 6×30-lb obuses, 4×24-lb obuses; 78 counted principal pieces; working operational complement 689; 702 retained as a secondary-source discrepancy.
+### Royal Navy
+- HMS Bellerophon: 28×32-pdr, 28×18-pdr, 18×9-pdr, 2×32-pdr carronades, 6×18-pdr carronades; working action complement 522.
+- HMS Conqueror: 28×32-pdr, 30×18-pdr, 16×9-pdr, 2×32-pdr carronades, 6×18-pdr carronades; working action complement 573.
 
-Coarse nominal broadside screening remains approximately 790.6 kg for the British pair versus 800.6 kg for the Spanish pair, about a 1.3% Spanish aggregate edge. This remains a research diagnostic, not a combat-value score.
+### Real Armada
+- Montañés: 28×36-lb, 30×18-lb, 8×8-lb, 10×30-lb obuses; 76 principal pieces; working complement 749.
+- Bahama: 28×24-lb, 30×18-lb, 10×8-lb, 6×30-lb obuses, 4×24-lb obuses; 78 principal pieces; working complement 689; 702 remains a documented secondary-source discrepancy.
 
-### Research gate
+National-side rule remains fixed: one coherent navy per side; no mixed-national teams in this pilot.
 
-The research gate for the **limited first playable 2v2 vertical slice is closed**.
+## Current playable parity branch
 
-Four sourced technical sheets and an implementation data specification exist. Unsupported individual sailing curves, crew-quality multipliers, reload bonuses, structural HP and similar values remain outside the historical ship-data layer and are explicitly provisional mechanics.
+Development deployment:
 
-### Playable implementation now integrated
+- service: `batalla-naval-2v2-parity`
+- branch: `feature/restore-prototype-ux-parity`
+- playable URL: `https://batalla-naval-2v2-parity.onrender.com/pilot`
+- stable reference service remains untouched.
 
-The canonical branch now contains:
+The parity branch restored major mechanics/interactions lost by the first 2v2 slice, including:
 
-- `data/historical_ships_1805.json` — externalized sourced ship records;
-- `src/pilot2v2-core.js` — reusable four-ship pilot simulation core;
-- `pilot-2v2.html` — playable browser interface;
-- `tests/pilot2v2.test.js` — state, targeting, battle-completion, UI-wiring and HTTP route tests;
-- Render-ready `/pilot` and `/health` routes in `server.js`.
+- recognizable top-down hull/deck/masts/sails;
+- NV/PV/MV/TV and progressive sail changes;
+- movement shadow and projected path;
+- helm -4..+4 with stable-prototype restrictions;
+- explicit Babor/Estribor fire;
+- target, aim, section and ammunition controls;
+- pan, zoom, recenter and fleet view;
+- explicit **Iniciar partida**;
+- configurable visible turn clock;
+- automatic resolution at timeout;
+- pause/resume;
+- independent orders for both human ships;
+- fatigue and crew experience;
+- historical guns per broadside and operational guns by side;
+- hull hits dismounting guns on the struck side;
+- mast/rig state and mast-fall casualties;
+- rudder damage;
+- bow/stern rakes;
+- collision damage;
+- loaded ammunition distinct from next ammunition;
+- round shot, grape and double shot;
+- confirmation reset after turn resolution.
 
-Human control:
+Latest fully observed automated parity build before documentation-only commits: **19 tests passed, 0 failed**.
 
-- one player issues independent orders to HMS Bellerophon and HMS Conqueror;
-- each ship can retain its own target, sail, rudder, fire and aim orders.
+PR #2 intentionally remains **draft**. Do not merge it merely for convenience; user-facing parity and the new Velmad-compliance gate are still open.
 
-AI control:
+## Governing mechanics decisions
 
-- Montañés and Bahama are independently controlled by the pilot AI;
-- AI closes range, seeks broadside geometry, retains firing solutions and recovers from map boundaries.
+### ADR-0001 — Velmad baseline and historical evidence
 
-### Validation
+Velmad v1.2 is the foundational mechanics reference. Changes require strong evidence; intuition is not enough.
 
-A battle-completion test exposed a genuine manoeuvre-loop defect in the first AI version. The failing deployment was rejected. AI manoeuvring was corrected and the benchmark then passed.
+### ADR-0003 — Preserve prototype interaction parity
 
-The validated build passes:
+The deployed stable game is the minimum interaction/mechanics floor during migration. Useful existing behavior must not be lost silently.
 
-- historical side coherence;
-- frozen ship-data integrity;
-- independent four-ship state;
-- side-safe targeting;
-- long-run numerical integrity;
-- AI-vs-AI battle completion;
-- independent human-side orders/targets;
-- pilot page wiring;
-- real localhost HTTP smoke checks for `/health`, `/pilot` and the ship-data JSON.
+### ADR-0004 — Complete Velmad parity before divergence
 
-Latest fully observed test run: **9 tests, 9 passed, 0 failed**.
+Accepted 2026-09-20.
 
-### Development deployment
+**Mandatory implementation order:**
 
-Dedicated Render service:
+1. inventory every applicable mechanic explicitly stated in Velmad v1.2;
+2. implement it faithfully with the stated percentages, thresholds, dependencies and state transitions;
+3. add tests demonstrating that exact rule;
+4. only then mark it verified in the compliance matrix;
+5. reach complete applicable Velmad baseline parity before replacing or improving any Velmad rule;
+6. any later improvement requires strong historical/technical/physical evidence and an explicit documented comparison;
+7. any mechanic added beyond Velmad also requires good documentation and must be identified as an addition.
 
-- service name: `batalla-naval-2v2-dev`
-- branch: `feature/historical-2v2-pilot`
-- public base URL: `https://batalla-naval-2v2-dev.onrender.com`
-- playable route: `https://batalla-naval-2v2-dev.onrender.com/pilot`
-- build command: `npm install && npm test`
-- start command: `npm start`
-- auto-deploy: enabled
-- latest feature-head deployment observed live after all validation/documentation commits.
+Important source limitation: Velmad explicitly omits some detailed movement and damage-calculation algorithms because the computer automated them. Those omitted formulas must not be invented and labelled as Velmad; stable/original behavior may be used as a documented reconstruction reference until stronger evidence exists.
 
-The deployment is isolated from the stable reference service.
+The exhaustive compliance matrix currently lives on the active branch at:
 
-Validation report:
+`docs/research/VELMAD_V1_2_MECHANICS_COMPLIANCE.md`
 
-- `docs/reports/HISTORICAL_2V2_PILOT_PLAYTEST.md`
+It is an implementation/release gate, not a wish list.
 
-### Known limitations / technical debt
+## Immediate known contradictions with Velmad
 
-- The pilot is a historically plausible development scenario, not an exact historical 2v2 action at Trafalgar.
-- Sailing response remains a shared provisional 74-gun baseline; documented qualitative differences are recorded but not converted into invented numerical bonuses.
-- Hull/rig HP, range falloff, collision damage, casualties and AI logic remain provisional mechanics.
-- Current pilot damage uses documented long-gun broadside mass as historical input; British carronades and Spanish obuses are stored separately and are not treated as equivalent.
-- Component damage, final artillery, ammunition, smoke, morale, fatigue, fire, flooding, surrender, capture and boarding remain future subsystem work.
-- Full browser visual automation has not been performed; the build does exercise the page/data through an actual local HTTP server.
-- `npm install` reports 15 inherited dependency vulnerabilities: 2 low, 3 moderate, 9 high and 1 critical. No blind `npm audit fix --force` was applied. Dependency remediation requires a separate controlled pass.
+The current pilot still contains provisional behavior that must be replaced to match the manual. The clearest first contradiction is:
 
-## Historical research and validation files
+- **Hull 0 must not mean automatic sinking.** Under Velmad, a hull-0 ship remains operational with restrictions, has a 10% per-turn chance to begin sinking, cannot use the first/bottom/main battery, is limited in speed, and may be pumped/repaired to hull 1 at the stated fatigue cost when eligible. Once actual sinking begins, the vessel is out of combat.
 
-- `docs/research/HISTORICAL_SHIPS_2V2_CANDIDATE_SELECTION.md`
-- `docs/research/HISTORICAL_SHIPS_2V2_CONFIGURATION_ENVELOPE.md`
-- `docs/research/HISTORICAL_SHIPS_2V2_DATA_SPEC.md`
-- `docs/research/ships/BELLEROPHON_1805.md`
-- `docs/research/ships/CONQUEROR_1805.md`
-- `docs/research/ships/MONTANES_1805.md`
-- `docs/research/ships/BAHAMA_1805.md`
-- `docs/decisions/ADR-0002-2v2-historical-configuration-balance.md`
-- `docs/reports/HISTORICAL_2V2_PILOT_PLAYTEST.md`
-- `docs/plans/HISTORICAL_SHIPS_2V2_PILOT.md`
+Other mandatory baseline systems still incomplete include exact Velmad morale, full fatigue cost/recovery table, four crew-quality levels, exact Velmad helm/class rules, tacking, bar/chain shot, windward/leeward shooting effects, carronade range contribution, boarding, surrender, white-flag state, prizes/recapture, critical mast knockdown, dragging fallen masts and cutting parties, fire progression/firefighting, helm-damage states, signals, wind changes, visibility and remaining manual-defined end/scoring rules.
 
-## Branch roles
+## UI direction agreed with user
 
-- `archive/prototype-v1`: immutable prototype snapshot; never develop here.
-- `main`: stable/default discovery entry point; do not use for normal development.
-- `develop/historical-simulator`: canonical integration branch; now includes the validated 2v2 pilot.
-- `feature/historical-2v2-pilot`: retained as the development-deployment branch for the isolated Render pilot service; no longer the source of truth for project state after PR #1 merge.
+The current fixed left/right panels are not the target architecture.
 
-## Next task
+Target interaction model:
 
-Do **not** keep expanding `pilot-2v2.html` into a permanent fleet engine.
+- battle sea/canvas should use essentially the full viewport;
+- primary ship orders remain permanently visible in a compact top bar, following the useful pattern of the stable game and original Velmad;
+- secondary panels should be collapsible/floating rather than permanently consuming battlefield width;
+- clicking a ship opens a contextual popup/card with identity, flag, ship state and operational damage;
+- own-ship popup is also the center for damage-control/special actions such as firefighting, cutting a dragging mast, pumping/repairing hull 0→1, etc.;
+- enemy information should be limited to what is reasonably observable rather than exposing hidden exact internal state without a rule justification;
+- current hard world-edge clamping is provisional and must not be mistaken for a historical mechanic.
 
-Use the pilot findings to begin the shared historical simulation-engine separation, starting with the subsystem that most affects both 1v1 and multi-ship behavior:
+This UI redesign has **not yet been implemented**. Do not lose the restored mechanics while changing the layout.
 
-1. define a durable ship-state/data boundary based on the externalized historical records;
-2. separate turn/order resolution from the UI;
-3. begin evidence-backed sailing/manoeuvre modeling (wind, sail state, inertia, leeway, tacking/wearing and heel) while retaining a Velmad-comparable baseline mode;
-4. add subsystem tests before replacing provisional pilot constants;
-5. preserve 1v1 as the first polished milestone while retaining the 2v2 pilot as a regression/test scenario;
-6. perform a controlled dependency-audit/remediation pass before any production promotion.
+## Stable/current mechanical references to read before further work
 
-## Important decisions
+On `feature/restore-prototype-ux-parity`:
 
-- GitHub remains the source of truth.
-- Historical ship records are immutable inputs except when stronger evidence requires correction.
-- Balance operates through sourced ship/configuration selection, not invented bonuses.
-- Raw crew count is not a proxy for crew quality or gunnery efficiency.
-- British tons BM and Spanish tonnage/displacement terminology are not directly interchangeable.
-- Provisional mechanics must remain clearly labelled as mechanics, not historical facts.
-- Do not evolve two permanent simulator codebases; use the pilot to expose requirements, then move common behavior into the shared historical simulation engine.
-- Preserve the frozen prototype and stable Render service throughout.
+- `docs/decisions/ADR-0001-velmad-baseline-and-historical-evidence.md`
+- `docs/decisions/ADR-0003-preserve-prototype-interaction-parity.md`
+- `docs/decisions/ADR-0004-complete-velmad-parity-before-divergence.md`
+- `docs/reports/STABLE_PROTOTYPE_MECHANICS_PARITY.md`
+- `docs/research/VELMAD_V1_2_MECHANICS_COMPLIANCE.md`
+- `src/pilot2v2-core.js`
+- `src/pilot2v2-ui.js`
+- `pilot-2v2.html`
+- `tests/pilot2v2-ux-parity.test.js`
+- `tests/pilot2v2.test.js`
 
-## Explicitly deferred
+Historical ship research remains under `docs/research/ships/` and related 2v2 research documents.
 
-- full fleet command beyond the limited 2v2 regression scenario;
-- admiral/division signal systems;
-- career/ranks/auctions;
-- disciplinary/court-martial systems;
-- corsairs and pirates;
-- scheduled large multiplayer battles;
-- forums/community systems;
-- final sailing/impact/damage physics;
-- major presentation redesign unrelated to the historical simulator.
+## Next concrete task
+
+**Do not start by inventing new historical refinements. Complete the Velmad baseline first.**
+
+Recommended next implementation unit:
+
+1. work on `feature/restore-prototype-ux-parity` or a child feature branch based on its current head;
+2. implement the exact Velmad **Hull 0 / Hull 1 / sinking state machine** instead of `HP 0 = sunk`;
+3. expose the necessary state/action in the contextual ship UI architecture without yet doing an unrelated presentation overhaul;
+4. add deterministic tests for hull-0 survival, 10% sinking check, hull-0 battery restriction, hull-0/1 speed cap, eligibility/cost for pumping to hull 1, and transition to actual sinking;
+5. update `docs/research/VELMAD_V1_2_MECHANICS_COMPLIANCE.md` only when tests prove parity;
+6. continue through the matrix systematically until all applicable Velmad rules are VERIFIED;
+7. only after complete baseline parity, open evidence-backed improvement/addition decisions.
+
+## Branch discipline
+
+- `main`: do not develop here.
+- `develop/historical-simulator`: canonical integration branch and fresh-chat recovery point.
+- `feature/restore-prototype-ux-parity`: current active implementation/validation branch; PR #2 is draft.
+- `archive/prototype-v1`: immutable old prototype reference.
+
+A new chat should never ask the user to restate this history if GitHub is available.
