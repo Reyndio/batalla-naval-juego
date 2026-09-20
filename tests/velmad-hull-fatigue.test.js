@@ -76,15 +76,14 @@ test('Velmad broadside and collision fatigue costs are exact', () => {
   assert.equal(Core.collisionFatigueCost('NV'), 0);
 });
 
-test('sail fatigue keeps explicit values while 30/30 applies only to the direct extreme reconstruction', () => {
-  assert.equal(Core.sailChangeFatigueCost('MV', 'TV'), 30);
-  assert.equal(Core.sailChangeFatigueCost('PV', 'TV'), 30);
-  assert.equal(Core.sailChangeFatigueCost('NV', 'TV'), 30);
-  assert.equal(Core.sailChangeFatigueCost('TV', 'NV'), 30);
-  assert.equal(Core.sailChangeFatigueCost('PV', 'NV'), 0);
-  assert.equal(Core.sailChangeFatigueCost('MV', 'NV'), 0);
-  assert.equal(Core.sailChangeFatigueCost('NV', 'PV'), 20);
-  assert.equal(Core.sailChangeFatigueCost('NV', 'MV'), 20);
+test('project sail fatigue rule charges 10 percent per crossed sail point in either direction', () => {
+  assert.equal(Core.FATIGUE_PER_SAIL_POINT, 10);
+  const sails = ['NV', 'PV', 'MV', 'TV'];
+  for (let from = 0; from < sails.length; from++) {
+    for (let to = 0; to < sails.length; to++) {
+      assert.equal(Core.sailChangeFatigueCost(sails[from], sails[to]), Math.abs(to - from) * 10);
+    }
+  }
 
   const ship = freshShip();
   ship.fatigue = 80;
@@ -95,7 +94,7 @@ test('sail fatigue keeps explicit values while 30/30 applies only to the direct 
   assert.equal(ship.fatigue, 61);
 });
 
-test('PV to NV is an ordinary reduction, not the reconstructed TV to NV +30 extreme action', () => {
+test('PV to NV costs one sail point: +10 fatigue instead of idle recovery', () => {
   const state = Core.buildInitialState(data);
   const ship = state.ships[0];
   ship.sail = 'PV';
@@ -107,7 +106,7 @@ test('PV to NV is an ordinary reduction, not the reconstructed TV to NV +30 extr
   }
   Core.resolveTurn(state, { rng: () => 0.5, autoSides: [] });
   assert.equal(ship.sail, 'NV');
-  assert.equal(ship.fatigue, 40);
+  assert.equal(ship.fatigue, 60);
 });
 
 test('all four Velmad crew-quality firing penalties and firing fatigue limits are represented', () => {
