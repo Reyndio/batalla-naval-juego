@@ -10,11 +10,11 @@ Active implementation/validation branch: `feature/restore-prototype-ux-parity`.
 
 PR #2 — `Restore prototype interaction parity in historical 2v2 pilot` — remains **draft**. Do not merge it merely for convenience; mechanical and user-facing validation are still active gates.
 
-Latest validated playable implementation/test head: `60c934d3595ab1d0f54584bfa5db16149bc61be1`.
-Sail-fatigue implementation: `a29741a112488dab0a33c1c804f05e52c6fde0f3`.
+Latest validated playable implementation/test head: `7069eb1365108c68dce57ca3e4202233fe593551`.
+Latest active documentation before this state commit: `7b0597b66782d0cf575fe1639461291bfd011264`.
 ADR-0006: sail fatigue per point.
 ADR-0007: inertia / strict T-like raking geometry.
-ADR-0008: restored prototype rudder, section-specific collision response, collision mast entanglement, full-sail ignition risk and hidden enemy fatigue.
+ADR-0008: restored prototype rudder, collision response/entanglement, full-sail ignition/fire loop and hidden enemy fatigue.
 
 ## Current milestone
 
@@ -31,13 +31,15 @@ The historical 2v2 remains the active development/regression scenario for real s
 
 ## Source / baseline policy
 
-ADR-0004 remains the general technical source policy: preserve and test applicable explicit baseline rules, and do not invent omitted algorithms and present them as source-derived.
+ADR-0004 remains the general technical source policy. Current playable deviations/reconstructions are explicit and must not be presented as literal source parity:
+
+- ADR-0006 — +10 fatigue per sail point crossed;
+- ADR-0007 — persistent translational inertia and strict T-like rake geometry;
+- ADR-0008 — stable-prototype nine-position helm, collision physics/entanglement, wind-amplified full-sail ignition and enemy-information privacy.
 
 The playable interface does not display the baseline product name. Internal research/ADR/compliance documents retain source attribution for provenance.
 
-Several current playable rules are deliberate owner-approved divergences/reconstructions and therefore must not be presented as literal baseline parity: sail-change fatigue (ADR-0006), translational inertia and strict T geometry (ADR-0007), and the restored stable-prototype helm plus collision/fire additions (ADR-0008).
-
-Authoritative mechanical checklist remains:
+Authoritative mechanical checklist:
 
 `docs/research/VELMAD_V1_2_MECHANICS_COMPLIANCE.md`
 
@@ -48,128 +50,115 @@ October 1805 configurations:
 - Royal Navy: HMS Bellerophon and HMS Conqueror;
 - Real Armada: Montañés and Bahama.
 
-All four are documented 74-gun / 74-gun-class two-deckers and resolve to third class in the baseline class dependency model.
+All four are documented 74-gun / 74-gun-class two-deckers and resolve to third class in the source classification layer.
 
 ## Current playable behavior
 
-### Sail-change fatigue — PROJECT RULE / DELIBERATE DIVERGENCE
+### Sail-change fatigue
 
-States are ordered `NV → PV → MV → TV`; every adjacent point crossed costs +10% fatigue. Direct changes therefore cost 10/20/30 according to distance, symmetrically in either direction. Progressive changes pay +10 per one-point change on each turn.
+States `NV → PV → MV → TV`; every adjacent point crossed costs +10% fatigue. Direct changes cost 10/20/30 according to distance, symmetrically; progressive changes pay +10 per point/turn.
 
 ### Hull / sinking
 
-Verified current behavior includes Hull 0 remaining operational, exact 10% per-turn sinking trigger, Hull 0/1 70% speed cap, lower-battery restriction at Hull 0, and pump/repair 0→1 at fatigue <=100 for +20 fatigue.
+Hull0 remains operational with its verified restrictions; uncaptured Hull0 has exact10% per-turn sinking trigger; Hull0/1 speed cap70%; lower battery unavailable at Hull0; pump0→1 at fatigue<=100 costs+20.
 
-### Playable helm — restored stable-prototype behavior
+### Playable helm — stable-prototype parity
 
-ADR-0008 restores the helm that exists in `archive/prototype-v1` as the current player-facing/runtime steering model:
+Current runtime/player helm follows `archive/prototype-v1` under ADR-0008:
 
 - positions `-4,-3,-2,-1,0,+1,+2,+3,+4`;
-- at NV/PV: 1=10°, 2=20°, 3=30°, T/4=45°;
-- MV steering angle = 70% of those values;
-- TV steering angle = 40%;
-- maximum helm-position change per turn: NV/PV 4, MV 3, TV 2;
-- maximum absolute helm: NV/PV 4, MV 4, TV 3;
-- therefore `±4` is never available at TV; `±3` can be reached progressively from `±2` but not jumped to from centred helm;
-- damaged rudder remains restricted to `±1`.
+- NV/PV: 1=10°, 2=20°, 3=30°, T/4=45°;
+- MV effectiveness x0.7; TV x0.4;
+- maximum position change per turn: NV/PV4, MV3, TV2;
+- maximum absolute position: NV/PV4, MV4, TV3;
+- TV never permits ±4; from centred helm it cannot jump directly to ±3, but from ±2 it can progress to ±3;
+- damaged rudder remains limited to ±1.
 
-The source-manual 0/1/2 rudder abstraction remains preserved/tested as source behavior, but it is **not** the current player-facing helm semantics. Any older state line describing the playable runtime as 0/1/2 is superseded by ADR-0008.
+The source 0/1/2-point abstraction remains preserved/tested as provenance, but is not the current player-facing control semantics. Head-to-wind tacking stop/departure remains layered over the restored control surface pending continued live validation.
 
-The current head-to-wind tacking stop/departure layer remains active on top of the restored control surface pending further user validation.
+### Translational inertia
 
-### Translational inertia — PROJECT-RECONSTRUCTION
-
-`src/inertia-model.js` retains a persistent two-dimensional motion vector. Sail/wind/class/hull/rig/helm produce a commanded vector; actual translation approaches it progressively. A ship going to NV keeps residual way, acceleration is progressive, and heading changes do not instantly redirect the whole previous motion vector.
-
-Current third-class response coefficient is `0.40` per turn. This is a project calibration because the source manual omits the detailed movement algorithm.
+Persistent2D motion vector; moving ships retain way when reducing sail, accelerate/decelerate progressively and do not instantly redirect all translation when heading changes. Current third-class response coefficient is0.40/turn. This is PROJECT-RECONSTRUCTION because the source movement algorithm is omitted.
 
 ### Raking geometry
 
-A rake requires both:
+Rake requires attacker within ±15° of defender bow/stern axis **and** headings within ±15° of perpendicular. Oblique L/diagonal geometry does not receive the rake multiplier.
 
-1. attacker within ±15° of the defender's bow/stern longitudinal axis; and
-2. headings approximately perpendicular, within ±15° of 90°.
+### Collision response
 
-This prevents oblique L/diagonal geometries from receiving a rake multiplier while retaining true T-like bow/stern rakes.
+Swept collision follows the inertial trajectory. Retained momentum of the struck vessel:
 
-### Collision response — revised 2026-09-20
+- bow0% — stop;
+- centre25% — speed -75%;
+- stern50% — speed -50%;
+- exact astern within current5° tolerance100% — collision itself does not change forward speed.
 
-Swept collision detection remains active across the full inertial trajectory. On first contact, the struck vessel's retained momentum now depends on the impacted section:
+Stern/rudder damage risk increases continuously with alignment from25% toward75% exactly astern.
 
-- **BOW**: 0% retained — complete stop at collision;
-- **CENTER**: 25% retained — 75% speed reduction;
-- **STERN**: 50% retained — 50% speed reduction;
-- **exactly astern** (current 5° tolerance): 100% retained — the impact itself neither raises nor lowers forward speed.
+### Weak mast / entanglement / carpenters
 
-Stern/rudder damage risk is now alignment-based rather than sail-difference-only: it rises continuously from 25% toward **75% at exact astern alignment**.
+Collision zone mapping follows prototype: bow→foremast, centre→mainmast, stern→mizzenmast.
 
-Collision damage still affects hull, rigging and crew and applies sail-dependent collision fatigue.
+Current collision reconstruction:
 
-### Collision mast fall / entanglement / carpenters
+- mast <=30% health after impact gets50% collision-fall check;
+- collision-fallen mast falls toward colliding ship;
+- 75% chance to leave both ships entangled;
+- entangled ships have zero translational movement;
+- carpenter/cutting action costs +10 fatigue and has exact50% success.
 
-The impacted mast zone follows the stable prototype mapping: bow→foremast, centre→mainmast, stern→mizzenmast.
+Ordinary non-collision dragging-mast/wind-side behavior remains incomplete.
 
-Current collision-specific project reconstruction:
+### Full-sail firing and fires
 
-- a mast at/below 30% health after collision damage is critically weak;
-- it gets a 50% collision-fall check;
-- if it falls in this collision, it falls toward the colliding vessel;
-- current entanglement chance is 75%;
-- entangled ships have zero translational movement until cleared;
-- a carpenter/cutting party must be ordered;
-- cutting costs +10% fatigue for that turn and has exact 50% success.
+At TV the existing source effects remain active: upperworks/carronade contribution excluded and accuracy penalty equivalent to +10 fatigue.
 
-The +10/50% cutting rule follows the source fallen-mast rule; the 30% weak-health threshold and 75% collision-entanglement probability are project reconstruction values under ADR-0008. The complete general dragging-mast/wind-side subsystem remains incomplete.
+Ignition:
 
-### Gunnery / full sail
+- actual ordinary full-sail broadside:20%;
+- wind entering through the firing side: project-calibrated30%.
 
-The implemented ammunition/loading/wind/carronade slice remains active. At full sail:
+The playable fire state/progression/control loop is now implemented:
 
-- upperworks long guns and carronades remain excluded from available firepower;
-- firing accuracy receives the source-defined penalty equivalent to +10% fatigue;
-- after an actual full-sail broadside there is now a 20% ignition check;
-- owner-approved project rule: when wind enters through the same side being fired, current ignition probability rises to **30%**.
+- new fire starts L1; additional declaration +1;
+- unattended fire +1 level/turn;
+- fire-fighting action +10 fatigue/turn;
+- control chance L1=50%, -10 percentage points per higher level;
+- control success reduces1 if firing/changing sail, otherwise2;
+- control failure:50% worsens one level /50% remains;
+- L3:50 damage to hull or standing mast +33% explosion chance;
+- L4:100 hull +100 mast damage, or mast portion redirected to hull when dismasted, +66% explosion chance;
+- L5: crew abandonment / out of combat;
+- explosion destroys vessel;
+- fire transmits between entangled ships at10% × source fire level per turn.
 
-The 30% wind-side value is an explicit PROJECT-RECONSTRUCTION calibration, not a source claim.
-
-A successful ignition now creates `fireLevel=1` / `onFire=true` state and is visible to the player. The complete five-level fire propagation/damage/fire-fighting loop is **not yet complete**.
+The damage-control UI exposes a fire-fighting action and current own fire level/control chance. Unresolved independent fire triggers remain in their owning critical-hit and ordinary fallen-mast sections.
 
 ### Enemy-information privacy
 
-The player no longer sees exact enemy fatigue in force-status cards. Enemy exact fatigue values in blocked-fire report lines are also scrubbed to a qualitative fatigue message. Enemy fatigue remains fully simulated internally.
+Exact enemy fatigue is hidden in force cards and blocked-fire report lines. Enemy fatigue remains fully simulated internally.
 
 ### Tactical readability
 
-- selected target gets a red `OBJETIVO` ring;
-- selected own ship gets a pulsing/dashed red `APUNTADO` ring when targeted by enemy ships;
-- force-status cards receive matching emphasis;
-- Babor/Estribor buttons remain visibly selected;
-- selected firing side is marked on the ship;
-- overlays follow pan, zoom, fit-fleet, recenter and reset/start camera operations.
+Target/threat red rings, persistent Babor/Estribor selection and red battery-side indicator remain active and follow camera movement.
 
 ## Validation / deployment
 
-Latest validated implementation/test head: `60c934d3595ab1d0f54584bfa5db16149bc61be1`.
+Latest validated implementation/test head: `7069eb1365108c68dce57ca3e4202233fe593551`.
 
-Render deploy: `dep-dao4msnavr4c73auepdg` — **live**.
+Render deploy `dep-dao4q67lk1mc73fs4qjg` reached **live** after the full test suite passed.
 
-The service build command is `npm install && npm test`; therefore the complete repository suite passed before deployment.
+Validated suite: **84 tests, 0 failed**.
 
-Validated suite: **76 tests, 0 failed**.
+New coverage in this work unit includes:
 
-New deterministic coverage includes:
-
-- restored nine-position prototype helm and exact PV/NV/MV/TV turn/change/amplitude rules;
-- TV `±4` prohibition and progressive access to `±3`;
-- damaged-rudder `±1` restriction;
-- collision momentum retention for bow/centre/stern/exact-astern;
-- exact-astern 75% rudder risk and decreasing risk off-axis;
-- critically weak collision mast fall toward the collider, 75% entanglement and 50% carpenter release;
-- inertia consuming each collision-retention state and cancelling motion while entangled;
-- 20% ordinary vs 30% wind-side full-sail ignition calculation;
-- actual logged full-sail broadside ignition to level 1;
-- no fire roll when no broadside actually fired;
-- browser script wiring, hidden enemy fatigue and damage-control UI parsing.
+- exact prototype helm tables/limits and TV no-±4 rule;
+- collision momentum by section and exact-astern75% rudder risk;
+- weak collision mast fall,75% entanglement,50% carpenter release;
+- inertia consuming section-specific collision momentum and zeroing while entangled;
+- full-sail20/30 ignition and actual ignition only after a real broadside;
+- unattended fire escalation, fire-fighting chances/success/failure, L3/L4 damage/explosion, entangled-fire transmission;
+- browser damage-control UI parsing and hidden enemy fatigue.
 
 Development service:
 
@@ -183,26 +172,18 @@ Stable reference service remains untouched.
 ## Documentation decisions
 
 - ADR-0004: general source-baseline policy.
-- ADR-0005: prior direct-extremes 30/30 sail reconstruction; superseded by ADR-0006 for playable sail fatigue.
+- ADR-0005: prior direct-extremes sail reconstruction; superseded by ADR-0006.
 - ADR-0006: +10 fatigue per sail point crossed.
-- ADR-0007: persistent translational inertia and strict T-like raking geometry.
-- ADR-0008: restored prototype helm; section-specific collision momentum; alignment-based stern/rudder damage; weak collision mast fall/entanglement; full-sail fire risk; enemy fatigue privacy.
-- Player-facing UI uses neutral simulator terminology; technical source documentation retains source attribution.
+- ADR-0007: persistent inertia and strict T-like rake geometry.
+- ADR-0008: prototype helm; collision section momentum/rudder risk; collision mast entanglement; full-sail ignition/fire control; hidden enemy fatigue.
 
 ## Major work still incomplete
 
-Important remaining groups include morale/combat capability; source-omitted gunnery range/crew-service details; boarding/surrender/white flag/prizes; complete critical-mast and ordinary dragging-mast rules; source-ambiguous magazine/captain criticals; four helm-damage states; complete five-level fire loop; scoring/end/fear; signals; exact wind-change/visibility; court-martial; explicit time/turn conventions; leeway; heel; and deeper sailing/inertia calibration.
+Morale/combat capability; source-omitted gunnery base range/damage and crew-service details; boarding/surrender/white flag/prizes; general critical-mast/ordinary dragging-mast rules; ambiguous magazine/captain criticals; four source helm-damage states; unresolved external fire triggers tied to critical/dragging-mast mechanics; scoring/end/fear; signals; exact wind-change/visibility; court-martial; explicit time/turn conventions; leeway; heel; deeper sailing/inertia calibration.
 
 ## Next concrete task
 
-Immediate priority is user validation of:
-
-1. prototype helm feel at PV/MV/TV, especially progressive TV access to ±3 and no ±4;
-2. collision stop/retention by impact section and exact-astern behavior;
-3. weak-mast fall/entanglement/carpenter release;
-4. full-sail firing accuracy/ignition behavior and enemy-information hiding.
-
-After that validation, continue the morale / surrender / boarding dependency chain, followed by the remaining mast, helm-damage and fire systems.
+Immediate priority is live user validation of the restored prototype helm, collision response/exact-astern behavior, mast entanglement/carpenter release, full-sail ignition/fire control and enemy-information hiding. Then continue morale/surrender/boarding and the remaining mast/helm-damage dependencies.
 
 ## Branch discipline
 
