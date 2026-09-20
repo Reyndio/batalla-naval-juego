@@ -144,7 +144,7 @@
     <canvas id="battleCanvas"></canvas>
     <div class="legend-box">
       <strong>Lectura del mapa</strong><br>
-      Casco marrón/rojo = buque · velas blancas = velamen actual · silueta gris = posición prevista · sectores azules = arcos de tiro · aro rojo = objetivo o buque apuntado por el enemigo · marca roja lateral = batería seleccionada.
+      Casco marrón/rojo = buque · velas blancas = velamen actual · silueta gris = posición prevista incluyendo inercia · sectores azules = arcos de tiro · aro rojo = objetivo o buque apuntado por el enemigo · marca roja lateral = batería seleccionada.
     </div>
     <div id="cameraTools">
       <button id="fitFleet">Vista general</button>
@@ -173,7 +173,9 @@
 </div>
 
 <script src="src/pilot2v2-core.js"></script>
+<script src="src/inertia-model.js"></script>
 <script src="src/collision-guard.js"></script>
+<script src="src/raking-geometry.js"></script>
 <script src="src/velmad-gunnery.js"></script>
 <script src="src/velmad-ui-bridge.js"></script>
 <script src="src/pilot2v2-ui.js"></script>

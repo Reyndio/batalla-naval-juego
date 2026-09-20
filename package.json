@@ -5,7 +5,7 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "test": "node --require ./src/velmad-gunnery.js --test tests/*.test.js"
+    "test": "node --require ./src/simulator-bootstrap.js --test tests/*.test.js"
   },
   "keywords": ["naval", "simulation", "age-of-sail"],
   "author": "",
