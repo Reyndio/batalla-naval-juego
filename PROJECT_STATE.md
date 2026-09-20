@@ -12,8 +12,8 @@ Last updated: 2026-09-20
 
 Open draft PR: **#2 — Restore prototype interaction parity in historical 2v2 pilot**.
 
-Latest validated playable implementation/test commit on active branch: `60c934d3595ab1d0f54584bfa5db16149bc61be1`.
-Latest active-branch state/documentation head at this handoff: `b9058e9777f53d71ab5097c4424e67054107c8e3`.
+Latest validated playable implementation/test commit on active branch: `7069eb1365108c68dce57ca3e4202233fe593551`.
+Latest active-branch state/documentation head at this handoff: `4dbb27019ab431b6cf46eda37305dfa61b45e600`.
 
 **Fresh-chat rule:** switch conceptually to `feature/restore-prototype-ux-parity` before inspecting or changing implementation. Read that branch's `PROJECT_STATE.md`, `docs/research/VELMAD_V1_2_MECHANICS_COMPLIANCE.md`, ADR-0006, ADR-0007 and ADR-0008. Do not use this canonical snapshot as a substitute for the active branch.
 
@@ -31,35 +31,35 @@ The 2v2 remains a development/regression scenario for historical ship data, mult
 
 ## Source / playable policy
 
-ADR-0004 remains the general technical source policy. Current playable divergences/reconstructions are explicitly documented rather than presented as literal source parity:
+ADR-0004 remains the general technical source policy. Current playable divergences/reconstructions are explicit:
 
 - ADR-0006 — +10 fatigue per sail point crossed;
 - ADR-0007 — persistent translational inertia and strict T-like rake geometry;
-- ADR-0008 — restored stable-prototype nine-position helm, section-specific collision momentum, alignment-based stern/rudder risk, collision mast entanglement/carpenter release, full-sail ignition and hidden enemy fatigue.
+- ADR-0008 — restored stable-prototype nine-position helm, section-specific collision response, alignment-based stern/rudder risk, collision mast entanglement/carpenter release, full-sail ignition/fire control and hidden enemy fatigue.
 
-The playable interface uses neutral simulator terminology and does not display the baseline product name. Internal research/ADR/compliance documents retain source attribution for provenance.
+Player-facing UI uses neutral simulator terminology; internal source documentation retains provenance.
 
 ## Current active-branch state
 
 - Hull0/Hull1/sinking path remains verified.
-- Current four historical ships remain class-3 in the baseline classification layer.
-- Sail fatigue remains the owner-approved 10% per crossed sail point rule.
-- Translational inertia is active and the movement preview uses the inertial destination.
-- Raking requires true T-like geometry, not merely an oblique bow/stern cone.
+- Sail fatigue remains +10% per crossed sail point.
+- Translational inertia is active and previewed.
+- Raking requires true T-like geometry.
 - Swept collision follows the inertial trajectory.
-- **Playable helm now matches the stable prototype**: -4..+4; NV/PV 10/20/30/45°, MV x0.7, TV x0.4; max change 4/3/2 for NV-PV/MV/TV; TV max absolute helm3 and never ±4; damaged rudder max ±1.
-- Collision momentum by impacted section: bow stops, centre retains25%, stern retains50%, exact astern retains100%; stern rudder-damage risk rises to75% at exact astern alignment.
-- Critically weak collision-zone masts can fall toward the colliding ship and may entangle both vessels; carpenter cutting action costs +10 fatigue and has 50% success.
-- Full-sail shooting retains its accuracy penalty and upperworks restriction; actual full-sail broadside now has source20% ignition risk, raised to project-calibrated30% when wind enters the firing side.
-- Exact enemy fatigue is hidden from the player UI/log.
+- Playable helm matches the stable prototype: positions -4..+4; NV/PV 10/20/30/45°, MV x0.7, TV x0.4; change limits 4/3/2; TV max absolute helm3 and never ±4; damaged rudder max ±1.
+- Collision retention: bow0%, centre25%, stern50%, exact astern100%; stern rudder risk rises to75% exactly astern.
+- Critically weak collision-zone masts can fall toward the colliding ship and entangle both; carpenter action costs+10 fatigue and succeeds50%.
+- Full-sail fire keeps its accuracy/upperworks penalties; ignition20%, raised to project-calibrated30% when wind enters the firing side.
+- Fire levels1–5, unattended escalation, +10 fire-fighting action, level-dependent control, L3/L4 damage/explosion, L5 abandonment and entangled-fire transmission are now playable/tested.
+- Exact enemy fatigue is hidden from player UI/log.
 - Objective/threat rings and selected battery-side marks remain live.
-- Complete general dragging-mast and five-level fire loops remain incomplete.
+- Ordinary non-collision dragging-mast rules and external critical-fire triggers remain incomplete.
 
 ## Validation / deployment
 
-Latest active code/test commit `60c934d3595ab1d0f54584bfa5db16149bc61be1` passed the full suite. Subsequent state/compliance-only commits also passed unchanged tests; latest active documentation deploy `dep-dao4num8bjmc73b2ffig` reached **live** at active head `b9058e9777f53d71ab5097c4424e67054107c8e3`.
+Active code/test commit `7069eb1365108c68dce57ca3e4202233fe593551` passed the complete suite and reached **live** through Render deploy `dep-dao4q67lk1mc73fs4qjg`.
 
-Validated suite: **76 tests, 0 failed**.
+Validated suite: **84 tests, 0 failed**.
 
 Development service:
 
@@ -73,7 +73,7 @@ Stable reference service remains untouched.
 
 ## Next concrete task
 
-Immediate priority is live user validation of the restored prototype helm, collision section response/exact-astern rudder risk, collision mast entanglement/carpenter release, full-sail ignition and hidden enemy fatigue. After that, continue the morale/surrender/boarding chain and then complete ordinary mast/dragging behavior, four helm-damage states and the full fire loop.
+Immediate priority is live user validation of the restored prototype helm, collision section response/exact-astern rudder risk, mast entanglement/carpenter release, full-sail ignition/fire control and enemy-information hiding. Then continue morale/surrender/boarding and the remaining ordinary mast/helm-damage dependencies.
 
 ## Branch discipline
 
