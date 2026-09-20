@@ -27,6 +27,19 @@
     doc.head.appendChild(style);
   }
 
+  function markAction(action) {
+    const st = state();
+    const ship = selectedShip();
+    if (!st || !ship || ship.confirmed || st.paused || !st.gameStarted) return false;
+    if (!ship.order) ship.order = { sail: ship.sail, rudder: ship.rudder, fire: false };
+    ship.order[action] = true;
+    ship.confirmed = false;
+    const select = doc.getElementById('shipSelect');
+    if (select) select.dispatchEvent(new Event('change', { bubbles: true }));
+    refresh();
+    return true;
+  }
+
   function ensureDamageControlUi() {
     let box = doc.getElementById('collisionDamageControl');
     if (box) return box;
@@ -38,7 +51,8 @@
       <h3>Control de averías</h3>
       <div id="collisionDamageStatus" class="small">Sin averías de aferramiento.</div>
       <button id="cutEntangledMast" style="width:100%;margin-top:6px">Carpinteros: cortar palo aferrado (+10% fatiga)</button>
-      <div id="fireDamageStatus" class="small" style="margin-top:6px">Sin incendio.</div>
+      <div id="fireDamageStatus" class="small" style="margin-top:7px">Sin incendio.</div>
+      <button id="fireFightingAction" style="width:100%;margin-top:6px">Partida contra incendios (+10% fatiga)</button>
     `;
     const orders = doc.getElementById('ordersSummary');
     const anchor = orders && orders.parentElement ? orders.parentElement : panel;
@@ -46,15 +60,14 @@
     else panel.insertBefore(box, anchor.nextSibling);
 
     box.querySelector('#cutEntangledMast').addEventListener('click', () => {
-      const st = state();
       const ship = selectedShip();
-      if (!st || !ship || !ship.entangledWith || ship.confirmed || st.paused || !st.gameStarted) return;
-      if (!ship.order) ship.order = { sail: ship.sail, rudder: ship.rudder, fire: false };
-      ship.order.cutMast = true;
-      ship.confirmed = false;
-      const select = doc.getElementById('shipSelect');
-      if (select) select.dispatchEvent(new Event('change', { bubbles: true }));
-      refresh();
+      if (!ship || !ship.entangledWith) return;
+      markAction('cutMast');
+    });
+    box.querySelector('#fireFightingAction').addEventListener('click', () => {
+      const ship = selectedShip();
+      if (!ship || !(ship.fireLevel > 0)) return;
+      markAction('fireFighting');
     });
     return box;
   }
@@ -98,6 +111,7 @@
     const status = box.querySelector('#collisionDamageStatus');
     const cut = box.querySelector('#cutEntangledMast');
     const fire = box.querySelector('#fireDamageStatus');
+    const fight = box.querySelector('#fireFightingAction');
     const other = ship.entangledWith ? st.ships.find(s => s.id === ship.entangledWith) : null;
 
     if (other) {
@@ -112,12 +126,15 @@
 
     const fireLevel = Math.max(0, ship.fireLevel || 0);
     if (fireLevel > 0) {
+      const controlChance = Core.fireControlChance ? Math.round(Core.fireControlChance(fireLevel) * 100) : Math.max(10, 60 - fireLevel * 10);
       fire.className = 'small fire-state';
-      fire.textContent = `INCENDIO — nivel ${fireLevel}.`;
+      fire.textContent = `INCENDIO — nivel ${fireLevel}. Control con partida: ${controlChance}%.`;
     } else {
       fire.className = 'small';
       fire.textContent = 'Sin incendio.';
     }
+    fight.disabled = fireLevel <= 0 || !st.gameStarted || st.paused || ship.confirmed || !!ship.order?.fireFighting;
+    fight.textContent = ship.order?.fireFighting ? 'Partida contra incendios asignada' : 'Partida contra incendios (+10% fatiga)';
   }
 
   function refresh() {
