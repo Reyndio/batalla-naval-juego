@@ -6,7 +6,7 @@ Project: historical age-of-sail naval combat simulator.
 
 This repository is the canonical source for project state, design decisions, research policy, code, tests, and historical data.
 
-Canonical development branch: `develop/historical-simulator`.
+Canonical integration branch: `develop/historical-simulator`.
 
 Branch roles:
 - `archive/prototype-v1`: immutable snapshot of the original playable prototype. Never use it for normal development.
@@ -18,25 +18,32 @@ Branch roles:
 
 Before doing project work in a fresh chat or agent session:
 
-1. Read `PROJECT_STATE.md`.
-2. Read `ROADMAP.md` only as needed for the current task.
-3. Read the relevant files under `docs/` for the task at hand.
-4. Inspect the affected code before changing it.
-5. When comparing against the untouched original prototype, use `archive/prototype-v1`.
-6. Do not reconstruct current state from old chats when GitHub contains newer information.
+1. Read `PROJECT_STATE.md` on `develop/historical-simulator`.
+2. If `PROJECT_STATE.md` names an **active work/validation branch or open PR**, switch conceptually to that branch before inspecting or changing implementation. Read that branch's `PROJECT_STATE.md` and the explicitly referenced decisions/reports.
+3. Read `ROADMAP.md` only as needed for the current task.
+4. Read the relevant files under `docs/` for the task at hand.
+5. Inspect the affected code before changing it.
+6. When comparing against the untouched original prototype, use `archive/prototype-v1`.
+7. When checking the currently deployed stable functional floor, use the service and commit recorded in `PROJECT_STATE.md`.
+8. Do not reconstruct current state from old chats when GitHub contains newer information.
 
 ## Historical simulation principle
 
-Velmad v1.2 is a foundational, well-informed baseline for mechanics and battle dynamics.
+Velmad v1.2 is the mandatory foundational baseline for mechanics and battle dynamics.
 
-It is not an immutable canon. A Velmad mechanic may be improved when there is solid historical, technical, or physical evidence supporting a better representation.
+Implementation order is governed by ADR-0004: **first reach complete parity with every applicable rule explicitly described in the Velmad v1.2 manual; only then modify, replace or extend those mechanics.**
 
 Rules:
-- preserve useful depth already present in Velmad;
-- improve mechanics when evidence supports the improvement;
+- no applicable Velmad mechanic may be silently omitted;
+- reproduce stated Velmad thresholds, percentages, dependencies, state transitions and consequences before claiming parity;
+- add tests for each reproduced rule;
+- improve a Velmad mechanic only when strong historical, technical or physical evidence supports the change;
+- add mechanics beyond Velmad only when they are well documented and explicitly identified as additions;
 - do not add "realism" based only on intuition;
-- distinguish documented fact, reconstruction, estimate, and hypothesis;
+- distinguish documented fact, reconstruction, estimate and hypothesis;
 - document important sources and design decisions.
+
+Where the Velmad manual explicitly omits an algorithm because the computer handled it, do not invent an algorithm and call it Velmad. Use recoverable original/stable behavior as a documented implementation reference until stronger evidence justifies a replacement.
 
 ## First major playable milestone
 
@@ -61,10 +68,11 @@ Before career systems, auctions, corsairs, pirates, or large multiplayer battles
 
 - Preserve `archive/prototype-v1` as an untouched historical reference.
 - Do not develop directly on `main`.
-- Do not maintain two independently evolving simulator copies; evolve the historical simulator through the canonical branch and use explicit rulesets/configuration when baseline behavior must remain comparable.
+- Do not maintain two independently evolving simulator copies; evolve the historical simulator through the canonical branch and explicit feature branches.
 - Use feature branches for substantial changes.
 - Add or update tests for simulation rules.
 - Record durable decisions under `docs/decisions/`.
 - Update `PROJECT_STATE.md` after meaningful work so a new chat can resume with minimal prompt.
+- Do not merge a validation branch merely to simplify handoff; preserve open validation gates recorded in `PROJECT_STATE.md`.
 
-When the user says only `Continuar proyecto`, recover context from GitHub first, then report briefly: canonical branch, current milestone, current state, and next task.
+When the user says only `Continuar proyecto`, recover context from GitHub first, then report briefly: canonical branch, active work branch if any, current milestone, current state, and next task.
