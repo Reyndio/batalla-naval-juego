@@ -92,6 +92,25 @@ test('resolved no-sail turns keep diminishing residual motion over successive tu
   assert.ok(d2 < d1);
 });
 
+test('inertia consumes collision-section retention exactly and entanglement cancels all way', () => {
+  const state = Core.buildInitialState(data);
+  const ship = state.ships[0];
+  ship.motionVx = 20;
+  ship.motionVy = 0;
+  ship.collidedThisTurn = true;
+
+  ship.collisionMomentumRetention = 0;
+  assert.deepEqual(Inertia.retainedMotion(ship, null), { x: 0, y: 0 });
+  ship.collisionMomentumRetention = 0.25;
+  assert.deepEqual(Inertia.retainedMotion(ship, null), { x: 5, y: 0 });
+  ship.collisionMomentumRetention = 0.50;
+  assert.deepEqual(Inertia.retainedMotion(ship, null), { x: 10, y: 0 });
+  ship.collisionMomentumRetention = 1;
+  assert.deepEqual(Inertia.retainedMotion(ship, null), { x: 20, y: 0 });
+  ship.entangledWith = 'enemy';
+  assert.deepEqual(Inertia.retainedMotion(ship, null), { x: 0, y: 0 });
+});
+
 test('stern or bow rake requires a T-like perpendicular geometry, not an oblique L-like geometry', () => {
   const valid = shotState(90);
   assert.equal(Raking.axisRelation(valid.defender, valid.attacker), 'STERN');
@@ -111,13 +130,15 @@ test('stern or bow rake requires a T-like perpendicular geometry, not an oblique
   assert.equal(invalidShot.rake, null);
 });
 
-test('playable page installs inertia before collision/gunnery and previews inertia explicitly', () => {
+test('playable page installs prototype rudder then inertia before collision and gunnery', () => {
   const html = fs.readFileSync(path.join(__dirname, '..', 'pilot-2v2.html'), 'utf8');
+  const rudderPos = html.indexOf('src/prototype-rudder-runtime.js');
   const inertiaPos = html.indexOf('src/inertia-model.js');
   const collisionPos = html.indexOf('src/collision-guard.js');
   const rakePos = html.indexOf('src/raking-geometry.js');
   const gunneryPos = html.indexOf('src/velmad-gunnery.js');
-  assert.ok(inertiaPos > 0 && inertiaPos < collisionPos);
+  assert.ok(rudderPos > 0 && rudderPos < inertiaPos);
+  assert.ok(inertiaPos < collisionPos);
   assert.ok(rakePos > collisionPos && rakePos < gunneryPos);
   assert.match(html, /posición prevista incluyendo inercia/);
 });
