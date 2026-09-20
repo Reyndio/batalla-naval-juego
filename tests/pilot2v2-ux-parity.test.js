@@ -95,7 +95,7 @@ test('Velmad helm supersedes the provisional stable limits: maximum two points, 
   assert.equal(Core.validateRudderOrder(ship, -1).valid, true);
 });
 
-test('explicit project reconstruction permits direct extreme sail orders rather than forced progressive stepping', () => {
+test('project sail rule permits direct extreme orders and charges 10 fatigue per sail point', () => {
   const state = Core.buildInitialState(data);
   const ship = state.ships.find(s => s.side === Core.SIDE_ROYAL_NAVY);
   ship.sail = 'NV';
@@ -103,18 +103,20 @@ test('explicit project reconstruction permits direct extreme sail orders rather 
   const projection = Core.projectMovement(state, ship, ship.order);
   assert.equal(projection.sail, 'TV');
   assert.equal(Core.sailChangeFatigueCost('NV', 'TV'), 30);
+  assert.equal(Core.sailChangeFatigueCost('PV', 'TV'), 20);
+  assert.equal(Core.sailChangeFatigueCost('MV', 'TV'), 10);
 });
 
-test('fatigue uses the Velmad full-sail cost, then exact idle recovery, and affects combat efficiency', () => {
+test('one-point sail change costs 10, then exact idle recovery applies, and fatigue affects combat efficiency', () => {
   const state = Core.buildInitialState(data);
   const ship = state.ships.find(s => s.side === Core.SIDE_ROYAL_NAVY);
   ship.order = { ...ship.order, sail: 'TV', fire: false };
   Core.resolveTurn(state, { rng: () => 0.5, autoSides: [] });
-  assert.equal(ship.fatigue, Core.FATIGUE_MAKE_FULL_SAIL);
+  assert.equal(ship.fatigue, Core.FATIGUE_PER_SAIL_POINT);
 
   ship.order = { ...ship.order, sail: ship.sail, fire: false };
   Core.resolveTurn(state, { rng: () => 0.5, autoSides: [] });
-  assert.equal(ship.fatigue, Core.FATIGUE_MAKE_FULL_SAIL - Core.FATIGUE_RECOVERY);
+  assert.equal(ship.fatigue, 0);
 
   ship.crewExperience = 'NORMAL';
   ship.fatigue = 100;
