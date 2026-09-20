@@ -1,6 +1,6 @@
 # PROJECT STATE
 
-Last updated: 2026-09-18
+Last updated: 2026-09-20
 
 ## Canonical branch
 
@@ -19,14 +19,30 @@ The Historical 1v1 Simulator remains the first polished milestone. The historica
 - Frozen original prototype: `archive/prototype-v1`, commit `31fe6620cf262bbe99cf680363a6962d4ddc26f8`.
 - Stable/default `main` remains untouched by historical-simulator development.
 - Canonical integration branch remains `develop/historical-simulator`.
-- Stable working Render reference: `batalla-naval-juego-1`, service `srv-d11jigk9c44c73fdfnn0`, branch `main`, current reference commit `573e809c19645c7a8a611433502715aa5c2cf504`.
-- Velmad v1.2 remains the foundational historical-mechanics reference.
+- Stable working Render reference: `batalla-naval-juego-1`, service `srv-d11jigk9c44c73fdfnn0`, branch `main`, reference commit `573e809c19645c7a8a611433502715aa5c2cf504`.
 - PR #1, the first four-ship vertical slice, was merged into `develop/historical-simulator`.
-- PR #2, `Restore prototype interaction parity in historical 2v2 pilot`, remains **draft** pending visual/user acceptance.
+- PR #2, `Restore prototype interaction parity in historical 2v2 pilot`, remains **draft** pending user-facing parity acceptance.
 
-## Stable mechanics parity rule
+## Mandatory Velmad v1.2 parity gate
 
-The working `batalla-naval-juego-1` build is now the **minimum functional behavior floor** during migration to the historical simulator.
+Velmad v1.2 is now an **implementation-completeness gate**, not merely a general inspiration.
+
+Before the simulator may replace, rebalance, simplify or extend a Velmad rule, it must first reproduce **every applicable mechanic explicitly stated in the Velmad v1.2 manual**, with its stated values, thresholds, state transitions and interactions, and have tests demonstrating that behavior.
+
+Only after complete applicable parity is reached may an individual Velmad rule be changed. Any change requires strong historical, technical or physical evidence and an explicit documented decision. New mechanics beyond Velmad require the same evidence discipline and must be identified as additions.
+
+This is formalized in:
+
+- `docs/decisions/ADR-0004-complete-velmad-parity-before-divergence.md`
+- `docs/research/VELMAD_V1_2_MECHANICS_COMPLIANCE.md`
+
+The compliance matrix is the authoritative checklist for this gate.
+
+Important source limitation: the Velmad v1.2 manual explicitly says detailed movement and combat damage-calculation algorithms were omitted because they were automated by the computer. Those algorithms must not be invented and labelled as Velmad; the stable implementation, archived behavior and later research must be separately documented as evidence.
+
+## Stable prototype parity rule
+
+The working `batalla-naval-juego-1` build remains the **minimum functional behavior floor** during migration.
 
 No mechanic already present in that stable build may disappear silently. It may be retained, adapted to historical ship data, or deliberately superseded by an evidence-backed model, but omission is a regression.
 
@@ -69,10 +85,9 @@ National-side rule remains fixed: one coherent navy per side.
 - progressive sail-state changes;
 - rudder -4..+4;
 - stable-prototype sail-dependent rudder change and amplitude restrictions;
-- damaged-rudder ±1 restriction;
+- damaged-rudder restriction;
 - projected movement shadow;
 - wind direction and strength;
-- late-battle wind-change mechanic;
 - map pan, zoom, recenter and fleet view;
 - keyboard controls W/S/A/D/Q/E/P/C/Tab.
 
@@ -83,9 +98,10 @@ Independent per ship:
 - historical crew complement;
 - casualties;
 - fatigue accumulation and recovery;
-- NOVATA/NORMAL/VETERANA experience;
-- experience-dependent fatigue thresholds;
+- current prototype experience handling;
 - fatigue penalty to combat effectiveness.
+
+**This is not yet Velmad-complete**: the exact Beginner/Normal/Veteran/Elite table and all Velmad fatigue costs/recovery rules remain to be reproduced.
 
 ### Artillery / damage
 
@@ -105,26 +121,57 @@ Independent per ship and per side:
 - rudder damage;
 - bow and stern rakes;
 - collision damage including hull, rigging, casualties and possible rudder effects;
-- sunk/out-of-combat state.
+- current pilot sunk/out-of-combat state.
 
-Velmad-supported double-shot effects are used where the stable prototype was incomplete: increased hull effect and 50% more artillery dismounting are treated as evidence-backed restoration, not arbitrary balance bonuses.
+Velmad-supported double-shot effects are used where the stable prototype was incomplete: increased hull effect and 50% more artillery dismounting.
 
-## User-interface parity restored
+**Critical correction still required:** the current pilot shortcut `hull == 0 -> sunk/out` is not Velmad-compliant. Under Velmad, hull 0 remains operational with penalties, has a 10% per-turn risk to begin sinking, cannot use the first battery, and can be pumped/repaired to hull 1 for +20% fatigue subject to the manual's fatigue condition.
 
-- recognizable top-down hull/deck/masts/sails;
-- ships rotate without deforming;
-- current vs ordered state styling;
-- movement shadow and projected path;
-- visible firing arcs;
-- tactical hover/range information;
-- right-drag map panning and wheel zoom;
-- explicit Babor/Estribor firing;
-- target, aim, section and ammunition controls;
-- per-ship status for hull, three masts, guns by side, crew, fatigue, experience, rudder, speed efficiency, ammunition, sail and heading.
+## User-interface direction
+
+The battle area should move toward a full-screen tactical canvas rather than permanent large side panels.
+
+Target UI architecture:
+
+- principal orders remain permanently visible in a compact top bar, following the stable game / Velmad interaction concept;
+- turn clock, wind and critical messages remain visible as compact HUD elements;
+- secondary panels are floating/collapsible and do not permanently consume sea area;
+- clicking a ship opens contextual ship status;
+- own-ship contextual status becomes the location for damage-control and special actions such as fire-fighting, cutting a dragging mast, hull-0 pumping/repair, boarding/capture actions, etc.;
+- enemy ship information must eventually respect observability rather than expose internal exact values without justification.
+
+## Velmad systems still missing or incomplete
+
+The full matrix is authoritative; major missing/incomplete groups include:
+
+- morale/combat capability and morale recovery;
+- exact Velmad fatigue costs and four crew-quality levels;
+- Velmad class-relative sailing and rigging thresholds;
+- exact Velmad rudder-history/two-point manoeuvre probabilities;
+- tacking rule;
+- full four-ammunition model including bar/chain shot and exact double-shot loading restrictions;
+- distance rules, sail-state shooting modifiers and crew-served-gun limits;
+- windward/leeward shooting distributions;
+- carronade distance contribution;
+- boarding calculation;
+- surrender and white-flag states;
+- prize crews, captured-ship restrictions and recapture;
+- exact hull 0/1 state machine;
+- critical mast knockdown;
+- tangled/dragging fallen mast and cutting party;
+- magazine/fire/captain critical-impact rules;
+- four helm-damage states;
+- five-level fire system and fire transmission;
+- end-of-battle disengagement/no-fire conditions;
+- score/victory/fear mechanics;
+- signals;
+- exact wind-change probability and visibility;
+- court-martial rule;
+- explicit 5-minute turn / 75 m length conventions.
 
 ## Validation
 
-Latest observed Render build after parity tests:
+Latest observed Render build before this documentation-only gate update:
 
 - **19 tests passed, 0 failed**;
 - historical side/data integrity;
@@ -143,6 +190,8 @@ Latest observed Render build after parity tests:
 - confirmation reset after turn resolution;
 - camera/shadow/rendering parity checks.
 
+These tests demonstrate restored prototype behavior, **not complete Velmad v1.2 parity**.
+
 ## Development deployment
 
 Current parity service:
@@ -157,34 +206,22 @@ Current parity service:
 
 Stable reference service `batalla-naval-juego-1` remains untouched.
 
-## Historical research files
+## Historical research / decision files
 
 - `docs/research/HISTORICAL_SHIPS_2V2_CANDIDATE_SELECTION.md`
 - `docs/research/HISTORICAL_SHIPS_2V2_CONFIGURATION_ENVELOPE.md`
 - `docs/research/HISTORICAL_SHIPS_2V2_DATA_SPEC.md`
+- `docs/research/VELMAD_V1_2_MECHANICS_COMPLIANCE.md`
 - `docs/research/ships/BELLEROPHON_1805.md`
 - `docs/research/ships/CONQUEROR_1805.md`
 - `docs/research/ships/MONTANES_1805.md`
 - `docs/research/ships/BAHAMA_1805.md`
+- `docs/decisions/ADR-0001-velmad-baseline-and-historical-evidence.md`
 - `docs/decisions/ADR-0002-2v2-historical-configuration-balance.md`
+- `docs/decisions/ADR-0003-preserve-prototype-interaction-parity.md`
+- `docs/decisions/ADR-0004-complete-velmad-parity-before-divergence.md`
 - `docs/reports/HISTORICAL_2V2_PILOT_PLAYTEST.md`
 - `docs/reports/STABLE_PROTOTYPE_MECHANICS_PARITY.md`
-
-## Known limitations / next historical work
-
-Parity restoration does **not** mean the inherited stable mechanics are the final historical model. Current shared constants remain provisional where not supported by stronger evidence.
-
-Still to be developed or substantially deepened for Milestone 1:
-
-- evidence-backed sailing physics: inertia, leeway, heel, tacking/wearing and ship-specific qualities;
-- final historical artillery/penetration/dispersion model;
-- component-level batteries and damage beyond the restored stable behavior;
-- smoke and visibility;
-- morale;
-- fire and flooding;
-- surrender, capture and boarding;
-- deeper crew-task allocation and fatigue model;
-- final Human vs Human / Human vs AI / AI vs AI scenario architecture.
 
 ## Branch roles
 
@@ -195,8 +232,10 @@ Still to be developed or substantially deepened for Milestone 1:
 
 ## Next task
 
-1. visually playtest the current parity deployment;
-2. fix any remaining mechanic or interaction that exists in `batalla-naval-juego-1` but is absent or degraded;
-3. keep PR #2 draft until that user-facing parity gate passes;
-4. after parity acceptance, merge to `develop/historical-simulator` and continue shared historical-engine separation without dropping the restored mechanics;
-5. perform controlled dependency remediation before any production promotion.
+1. Use `VELMAD_V1_2_MECHANICS_COMPLIANCE.md` as the implementation backlog and release gate.
+2. Fix the most material contradictions first, beginning with hull 0/1 and the current automatic-sinking shortcut.
+3. Implement Velmad systems in coherent tested slices rather than adding new speculative realism.
+4. Continue checking the stable `batalla-naval-juego-1` interaction floor so no existing useful behavior regresses.
+5. Keep PR #2 draft while this baseline restoration is still incomplete.
+6. After full applicable Velmad parity, evaluate proposed historical improvements one by one under ADR-0001, with evidence and explicit decisions.
+7. Perform controlled dependency remediation before any production promotion.
