@@ -79,7 +79,7 @@
     }
   }
 
-  function applyCollisionConsequences(state, ship, ownType, other, rng) {
+  function applyCollisionConsequences(state, ship, ownType, other, rng, preTurnFatigue) {
     const speedA = Core && Core.SAIL_SPEED ? (Core.SAIL_SPEED[ship.effectiveSail || ship.sail] || 0) : 0;
     const speedB = Core && Core.SAIL_SPEED ? (Core.SAIL_SPEED[other.effectiveSail || other.sail] || 0) : 0;
     const impact = BASE_COLLISION_DAMAGE + Math.round((speedA + speedB) * 0.35);
@@ -98,7 +98,8 @@
 
     ship.collidedThisTurn = true;
     const fatigue = Core && Core.collisionFatigueCost ? Core.collisionFatigueCost(ship.effectiveSail || ship.sail) : 0;
-    ship.fatigue = Math.max(0, ship.fatigue + fatigue);
+    const fatigueBase = Number.isFinite(preTurnFatigue) ? Math.max(ship.fatigue, preTurnFatigue) : ship.fatigue;
+    ship.fatigue = Math.max(0, fatigueBase + fatigue);
     if (Core && Core.updateSpeedEfficiency) Core.updateSpeedEfficiency(ship);
     if (state && state.log) {
       state.log.push(`Colisión durante el movimiento: ${ship.name} (${ownType}) casco -${hullBefore - ship.hull}, fatiga +${fatigue}%, bajas ${casualties}${ship.rudderDamaged ? ', timón comprometido' : ''}.`);
@@ -107,7 +108,7 @@
   }
 
   function capturePoses(state) {
-    return new Map(state.ships.map(s => [s.id, { x: s.x, y: s.y, heading: s.heading }]));
+    return new Map(state.ships.map(s => [s.id, { x: s.x, y: s.y, heading: s.heading, fatigue: s.fatigue }]));
   }
 
   function enforceSweptCollisions(state, before, rng) {
@@ -128,8 +129,8 @@
 
         a.x = hit.poseA.x; a.y = hit.poseA.y; a.heading = hit.poseA.heading;
         b.x = hit.poseB.x; b.y = hit.poseB.y; b.heading = hit.poseB.heading;
-        applyCollisionConsequences(state, a, hit.a, b, rng);
-        applyCollisionConsequences(state, b, hit.b, a, rng);
+        applyCollisionConsequences(state, a, hit.a, b, rng, startA.fatigue);
+        applyCollisionConsequences(state, b, hit.b, a, rng, startB.fatigue);
         handled.add(key);
       }
     }
