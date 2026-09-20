@@ -98,7 +98,9 @@ test('entangled fire transmits with ten percent per source fire level', () => {
   a.fireLevel = 3;
   a.onFire = true;
   const events = Combat.transmitEntangledFire(state, () => 0.299999, new Set());
-  assert.ok(events.some(e => e.from === a.id && e.to === b.id && e.chance === 0.30 && e.ignited));
+  const event = events.find(e => e.from === a.id && e.to === b.id && e.ignited);
+  assert.ok(event);
+  assert.ok(Math.abs(event.chance - 0.30) < 1e-12);
   assert.equal(b.fireLevel, 1);
   assert.equal(b.onFire, true);
 });
