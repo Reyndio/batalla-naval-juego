@@ -102,16 +102,16 @@ test('sail changes are progressive rather than jumping directly through multiple
   assert.equal(projection.sail, 'PV');
 });
 
-test('fatigue accumulates from work, recovers on an idle turn and affects combat efficiency above threshold', () => {
+test('fatigue uses the Velmad full-sail cost, then exact idle recovery, and affects combat efficiency', () => {
   const state = Core.buildInitialState(data);
   const ship = state.ships.find(s => s.side === Core.SIDE_ROYAL_NAVY);
   ship.order = { ...ship.order, sail: 'TV', fire: false };
   Core.resolveTurn(state, { rng: () => 0.5, autoSides: [] });
-  assert.equal(ship.fatigue, Core.FATIGUE_ACTION);
+  assert.equal(ship.fatigue, Core.FATIGUE_MAKE_FULL_SAIL);
 
   ship.order = { ...ship.order, sail: ship.sail, fire: false };
   Core.resolveTurn(state, { rng: () => 0.5, autoSides: [] });
-  assert.equal(ship.fatigue, 0);
+  assert.equal(ship.fatigue, Core.FATIGUE_MAKE_FULL_SAIL - Core.FATIGUE_RECOVERY);
 
   ship.crewExperience = 'NORMAL';
   ship.fatigue = 100;
