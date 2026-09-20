@@ -6,574 +6,453 @@ Purpose: exhaustive implementation gate. Nothing in this file is optional merely
 
 ## Status vocabulary
 
-- **VERIFIED** — implemented and covered by deterministic tests demonstrating the stated Velmad behavior.
+- **VERIFIED** — implemented and covered by deterministic tests demonstrating the stated source behavior.
 - **PARTIAL** — some of the rule exists, but one or more stated values/interactions remain missing or differ.
 - **MISSING** — not implemented.
 - **SOURCE-AMBIGUOUS** — the manual states a rule, but the translated wording does not define one unique algorithm safely enough to encode without further source work.
 - **SOURCE-OMITTED** — the manual explicitly says the detailed algorithm was omitted because the computer automated it.
-- **PROJECT-RECONSTRUCTION** — playable behavior chosen from non-canonical reconstruction evidence where the v1.2 text is conflicting or incomplete; never presented as literal Velmad text.
-- **PROJECT-DIVERGENCE** — an explicit project rule intentionally differs from recoverable literal Velmad text and therefore cannot count toward literal parity.
+- **PROJECT-RECONSTRUCTION** — playable behavior chosen where source/original algorithms are incomplete; never presented as literal source text.
+- **PROJECT-DIVERGENCE** — an explicit project rule intentionally differs from recoverable source text and therefore cannot count toward literal parity.
+- **PROTOTYPE-PARITY** — behavior restored from the frozen stable prototype because the project owner requires the established playable control model.
 
-Verification evidence for the current Hull 0 / fatigue / manoeuvre / gunnery slice is in `tests/velmad-hull-fatigue.test.js`, `tests/velmad-manoeuvre.test.js`, and `tests/velmad-gunnery.test.js`.
+Current playable overrides are documented in ADR-0006, ADR-0007 and ADR-0008. Tests for source behavior and playable divergences intentionally coexist; a source-rule test does not imply that the same control semantics are the current player-facing runtime.
 
 ---
 
 ## 1. Morale and Combat Capability
 
-Velmad baseline:
+Source baseline:
 
-- morale represents crew state, readiness and combat capability;
-- -2 after a bow rake from less than 2 ship lengths with at least 150 damage points;
+- morale represents crew state/readiness/combat capability;
+- -2 after bow rake from <2 ship lengths with at least 150 damage;
 - -3 when losing a mast;
-- -4 after a stern rake from less than 2 lengths with at least 150 damage points;
+- -4 after stern rake from <2 lengths with at least 150 damage;
 - rake damage 75–149 causes half the corresponding morale loss;
-- -1 after 100 damage points of grapeshot to the hull from less than 2 lengths;
-- -1 after receiving 500 or more total damage points in one broadside fired to the hull;
-- a ship that previously lost at least 3 morale may recover 1 point, up to 10, by knocking down an enemy mast or achieving a stern rake from less than 150 m;
+- -1 after 100 grapeshot hull damage from <2 lengths;
+- -1 after receiving >=500 total damage in one hull-directed broadside;
+- a ship that previously lost at least 3 morale may recover 1, up to 10, by knocking down an enemy mast or achieving a stern rake from <150 m;
 - recovery does not restore the intact ship's original combat-capability state.
 
-Status: **MISSING/PARTIAL** — no complete Velmad morale subsystem yet.
+Status: **MISSING/PARTIAL** — no complete morale subsystem yet.
 
 ## 2. Fatigue
 
-Manual action costs:
+Source action costs:
 
-- one broadside fired: +10%;
-- both broadsides fired: +30%;
-- making full sail: +30%;
-- `Remove all sailing`: +30%;
-- `Collect all the sail (pass to no sail)`: +40%;
-- from no sail to few or medium sail: +20%;
-- fire-fighting party: +10% per turn;
-- cutting/unravelling/dislodging a fallen mast: +10% per turn;
-- reload double shot: +10% per band.
+- one broadside +10%; both broadsides +30%; making full sail +30%;
+- `Remove all sailing` +30%; `Collect all the sail (pass to no sail)` +40%;
+- no sail -> few or medium +20%;
+- fire-fighting party +10%/turn;
+- cutting/unravelling/dislodging fallen mast +10%/turn;
+- reload double shot +10% per band.
 
-Collision fatigue:
-
-- full sail: +60%;
-- medium or few sail: +40%;
-- no sail: +0%.
+Collision fatigue: TV +60%; MV/PV +40%; NV +0%.
 
 Recovery/effects:
 
-- fatigue affects shooting effectiveness and whether a ship may fire;
-- fatigue affects boarding;
-- if none of the first-list fatigue actions was performed, recover 10% for the next turn;
-- if current fatigue is over 80%, the stated recovery is 20%.
+- fatigue affects shooting eligibility/effectiveness and boarding;
+- if none of the first-list fatigue actions occurred, recover 10%; if current fatigue >80%, recover 20%.
 
-Current implementation evidence:
+Current implementation:
 
-- one broadside +10, both-broadsides helper +30, collision 60/40/0, recovery 10 / >80 recovery 20 are encoded/tested;
-- firing effectiveness and eligibility use the four crew-quality fatigue tables;
-- firing fatigue is generated only when the ship is actually eligible to fire;
-- double-shot reload has an owning action loop and exact +10% per-band behavior; +10 hooks for fire-fighting and cutting parties remain pending their complete owning subsystems;
-- sail-change fatigue is now an explicit **PROJECT-DIVERGENCE** under ADR-0006: the four sail states are ordered `NV→PV→MV→TV`, every adjacent point crossed costs +10%, two-point jumps cost +20%, and three-point `NV↔TV` jumps cost +30%;
-- the sail-point rule is symmetric and applies whether the transition is ordered directly or progressively; a progressive one-point change costs +10% on each turn;
-- deterministic tests cover the complete 4×4 sail-transition cost matrix and the live-user regression case `PV→NV`, which now costs +10 rather than being treated as idle recovery;
-- this project rule intentionally differs from literal v1.2 lines including `NV→PV/MV +20`, the general `Making full sail +30`, and the conflicting +30/+40 sail-removal wording;
-- true two-broadside-in-one-turn execution is still absent even though its +30 helper exists.
+- one-broadside, collision, recovery, shooting-quality and double-reload effects are implemented/tested;
+- the new carpenter/cutting action has an owning loop, costs +10% on the turn assigned, and uses the source 50% cutting-success rule;
+- fire-fighting owning loop remains incomplete;
+- true two-broadside-in-one-turn execution remains absent;
+- sail-change fatigue is **PROJECT-DIVERGENCE** under ADR-0006: `NV→PV→MV→TV`, +10% for each adjacent point crossed, so direct jumps cost 10/20/30 symmetrically.
 
-Status: **PARTIAL / PROJECT-DIVERGENCE** — the playable sail-fatigue model is intentionally not literal Velmad v1.2 and therefore cannot be marked VERIFIED parity. Other fatigue-dependent systems also remain incomplete.
+Status: **PARTIAL / PROJECT-DIVERGENCE**.
 
 ## 3. Vessel classes
 
-Manual classification required because other mechanics depend on it:
+Source classification:
 
-- first class: 100+ official guns, 3-deckers; Santísima Trinidad noted as four-decker;
-- second class: 90/98-gun 3-deckers; 80-gun English 3-deckers; 80-gun French/Spanish 2-deckers;
-- third class: 74/70-gun 2-deckers; Dutch 68/64-gun 2-deckers;
-- fourth class: 64/60/56/50-gun 2-deckers; 44-gun frigates as 2-deckers;
-- fifth class: 36/32/28-gun frigates; 24-gun corvettes;
-- sixth class: 18-gun brigs.
+- first: 100+ official guns, 3-deckers; Santísima Trinidad noted four-decker;
+- second: 90/98-gun 3-deckers; 80-gun English 3-deckers; 80-gun French/Spanish 2-deckers;
+- third: 74/70-gun 2-deckers; Dutch 68/64-gun 2-deckers;
+- fourth: 64/60/56/50-gun 2-deckers; 44-gun frigates as 2-deckers;
+- fifth: 36/32/28-gun frigates; 24-gun corvettes;
+- sixth: 18-gun brigs.
 
-Current implementation evidence:
+Current four ships are documented 74-gun/74-gun-class two-deckers and resolve to class 3. Tests cover their classification and dependent class tables.
 
-- a Velmad-class dependency layer exists in the core;
-- class-relative speed and two-point manoeuvre tables use this class value;
-- Bellerophon, Conqueror, Montañés and Bahama are all classified from their documented 74-gun / 74-gun-class two-decker rating as **third class** rather than from their fitted total principal pieces;
-- deterministic tests verify all four pilot ships resolve to class 3 and therefore to 100% class speed factor and 75% base two-point chance.
-
-Status: **VERIFIED for the current four-ship pilot classification/dependency path**. Broader future ship ingestion must extend classification coverage when new classes are added.
+Status: **VERIFIED for the current four-ship classification/dependency path**.
 
 ## 4. Sailing speed
 
-Class-relative baseline using a 74 as reference:
+Source class factors relative to a 74: first 80%, second 90%, third 100%, fourth 110%, fifth 120%, sixth 125%.
 
-- first 80%; second 90%; third 100%; fourth 110%; fifth 120%; sixth 125%.
-
-Rigging thresholds:
+Rig thresholds:
 
 - classes 1–3: 2800 / 1800;
 - classes 4–5 and two-decker frigates: 2500 / 1500;
 - class 6: 1350 / 350.
 
-State modifiers:
+State rules:
 
-- each fallen mast: -30% speed;
-- dismasted: stopped;
-- below first rigging limit: max 90%;
-- below second: max 80%, retaining the manual's special first-mast/90% wording;
-- hull 0 or 1: max 70%;
-- dragging a mast: max 90%.
+- each fallen mast -30% speed; dismasted stopped;
+- below first rig limit max90%; below second max80%, retaining the special first-mast/90% wording;
+- Hull0/1 max70%; dragging mast max90%.
 
-Current implementation evidence:
+Current implementation has class factors, fallen-mast penalty, dismasted stop and Hull0/1 cap. Current rig scale remains inherited `BASE_RIG=1200`, so literal threshold conversion is unresolved. Ordinary dragging-mast 90% cap remains incomplete. Translational inertia is a separate **PROJECT-RECONSTRUCTION** under ADR-0007.
 
-- class-relative 80/90/100/110/120/125 factors are represented;
-- each fallen mast applies -30%; dismasted state stops movement;
-- Hull 0/1 70% cap is implemented and tested;
-- current rigging points still use the inherited prototype scale (`BASE_RIG=1200`), so the literal Velmad 2800/1800 etc thresholds cannot yet be applied without first recovering/defining the compatible initial rig-point scale;
-- dragging-mast 90% cap remains absent.
-
-Status: **PARTIAL** — class and fallen-mast pieces advanced, literal rig thresholds/dragging-mast rule remain unresolved.
+Status: **PARTIAL**.
 
 ## 5. Manoeuvring
 
-- Velmad manoeuvre uses two rudder points, one point, or none;
-- each rudder point turns 15°;
-- previous-turn rudder history controls whether all rudder or only one point may be applied;
-- previous port allows all port next turn; previous starboard allows all starboard;
-- centered or changing to the opposite side normally allows only one point;
-- with one mast lost: maximum one point; dismasted: none;
-- independent chance to use two points regardless of previous rudder: first 25%, second 50%, third 75%, fourth/fifth/sixth 100%;
-- Velmad deliberately does not model ship-specific historical close-hauled differences, although the game still has speed/manoeuvre consequences around the wind.
+Source baseline:
 
-Current implementation evidence:
+- 0/1/2 rudder points; each point 15°;
+- previous helm side governs access to full two-point helm;
+- centred/opposite side normally permits one point;
+- one mast lost max1; dismasted none;
+- independent two-point chance by class: 25/50/75/100/100/100%;
+- the rules deliberately do not model ship-specific close-hauled differences.
 
-- provisional ±4 stable-prototype helm has been replaced by 0/±1/±2 Velmad points;
-- one point is exactly 15° and two points exactly 30° before tacking truncation;
-- same-side previous helm permits two points without the independent class roll;
-- centered/opposite-side two-point request uses the class chance;
-- one fallen mast limits to one point; dismasted limits to none;
-- deterministic threshold tests cover class-3 75% chance and previous-helm behavior;
-- runtime UI hides the obsolete ±3/±4 controls and labels 1 point / two-point full helm.
+Source mechanics remain implemented and deterministically tested in the baseline core/test layer.
 
-Status: **VERIFIED for the explicit v1.2 rudder-point/history/class mechanics**. Separate four-state helm damage remains section 19.
+### Current playable runtime override
+
+ADR-0008 restores the stable-prototype player control model:
+
+- helm positions -4..+4;
+- NV/PV turn table: 1=10°, 2=20°, 3=30°, 4/T=45°;
+- MV factor .7; TV factor .4;
+- maximum change/turn: NV/PV4, MV3, TV2;
+- maximum absolute helm: NV/PV4, MV4, TV3;
+- TV never allows ±4 and can reach ±3 only progressively from ±2;
+- damaged rudder max ±1.
+
+Therefore the previously verified source 0/1/2 model is **not the current player-facing control semantics**.
+
+Status: **SOURCE BASELINE VERIFIED / PLAYABLE PROJECT-DIVERGENCE + PROTOTYPE-PARITY**. Literal runtime parity is intentionally broken under ADR-0008.
 
 ## 6. Tacking
 
-- when the bow reaches exactly the wind direction while turning, no remaining rudder points may rotate the ship farther that turn;
-- when leaving that situation, only one rudder point may be used regardless of ordered helm;
-- wearing is distinguished from tacking.
+Source:
 
-Implementation:
+- when bow reaches exactly wind direction while turning, no remaining rudder points rotate farther that turn;
+- when leaving that situation, only one point may be used;
+- wearing is distinct from tacking.
 
-- turning is applied point-by-point at 15°;
-- a point whose arc reaches/crosses head-to-wind clamps the heading exactly to wind direction and consumes no further points that turn;
-- the next turn while leaving head-to-wind is limited to one point even when two were ordered;
-- deterministic tests cover both arrival at and departure from head-to-wind.
+Current head-to-wind stop/departure layer remains active over the restored prototype helm pending further validation.
 
-Status: **VERIFIED** for the explicit tacking stop/exit rule. Wearing remains ordinary turning around the opposite side and does not use this stop condition.
+Status: **VERIFIED source rule, with playable integration requiring continued regression testing after ADR-0008**.
 
 ## 7. Crew quality
 
-Four levels and stated shooting/manoeuvre limits:
+Source shooting/manoeuvre table:
 
-- Beginner: 6% firing penalty per 10% fatigue; may fire through 100%; class two-point manoeuvre chance halved;
-- Normal: 5% per 10%; may fire through 100%; normal class two-point chance;
-- Veteran: 4% per 10%; may fire with 120%; may manoeuvre any ship two points;
-- Elite: 3% per 10%; may fire with 120%; may manoeuvre any ship to all rudder;
-- crew quality also modifies boarding combat by ordered quality levels.
+- Beginner: 6% firing penalty per10 fatigue, fires through100, class two-point chance halved;
+- Normal: 5%, through100, normal chance;
+- Veteran: 4%, through120, may manoeuvre any ship two points;
+- Elite: 3%, through120, may manoeuvre any ship to all rudder;
+- quality also modifies boarding by ordered quality level.
 
-Current implementation evidence:
+Shooting fatigue tables remain implemented/tested. Source 0/1/2 manoeuvre quality effects remain baseline-tested but are no longer the current playable helm semantics under ADR-0008. Boarding effects remain pending.
 
-- all four levels exist (`NOVATA`, `NORMAL`, `VETERANA`, `ELITE`);
-- exact discrete firing penalties per 10% fatigue and exact 100/120% firing limits are tested;
-- Beginner halves the class two-point probability; Normal uses class probability; Veteran and Elite may use the full two-point helm in the current 0/1/2 Velmad model;
-- deterministic manoeuvre tests cover these distinctions;
-- boarding quality effects await the boarding subsystem.
-
-Status: **PARTIAL** — shooting and manoeuvring portions verified; boarding portion remains pending.
+Status: **PARTIAL / PLAYABLE MANOEUVRE DIVERGENCE**.
 
 ## 8. Ammunition, shooting and damage
 
-### 8.1 Round shot
+### Round shot
 
-- principal penetration/range/accuracy ammunition;
-- primarily hull-directed;
-- may cause fires and magazine criticals;
-- against rigging: 50% damage;
-- rigging damage beyond 7 lengths capped at the 7-length value.
+- primary hull ammunition; may cause fire/magazine criticals;
+- rigging damage 50%; rigging damage beyond 7 lengths capped at 7-length value.
 
-### 8.2 Bar/chain shot
+### Bar/chain
 
-- treated as one ammunition type;
-- primarily rigging-directed;
-- against hull: 50% damage;
-- beyond 7 lengths: damage divided by 3.
+- one ammo family; hull damage50%; beyond7 lengths damage /3.
 
-### 8.3 Grapeshot
+### Grapeshot
 
-- close-range anti-crew ammunition;
-- hull damage 50%; rigging damage one third;
-- triple crew losses of round shot to hull;
-- double crew losses of chain shot to rigging;
-- morale interaction applies.
+- anti-crew; hull damage50%, rigging one-third;
+- triple crew losses of round shot to hull; double crew losses of chain to rigging; morale interaction.
 
-### 8.4 Double shot
+### Double shot
 
-- round shot must already be loaded in that band;
-- band cannot fire during the turn double shot is reloaded;
-- reloading does not require firing the current round;
-- reload +10% fatigue per band;
-- effective range 112 m; beyond it damage /5;
-- hull damage +25%; artillery dismounting +50%; crew losses ×2 versus single round;
-- against rigging: one third of bar/chain damage in battle range and one fifth outside it.
+- requires round already loaded in that band;
+- band cannot fire while reloading it; reload does not require firing current round;
+- +10 fatigue per band;
+- effective range112m; beyond /5;
+- hull +25%, artillery dismount +50%, crew losses x2 vs single round;
+- rigging: one-third bar/chain in range, one-fifth outside.
 
-### 8.5 Loading sequence
+### Loading/geometry/distance
 
-- captain chooses ammunition to reload for each band that fires;
-- selected ammunition is available next turn.
+- fired band selects ammo for next turn;
+- target may be in complete or bow/stern battery section;
+- each ship length decreases about10% of minimum base/max accuracy/damage;
+- general range little over10 lengths; normal damage allocated90/10 chosen/other area subject to wind-position rules;
+- <=112m forced hull; beyond little over6 lengths hull-directed damage50%; one-length max effectiveness.
 
-### 8.6 Battery section / geometry
+### Sail-state effects
 
-- target may be in arc of the whole battery or only bow/stern section.
+Target rigging factor: MV normal, TV +50%, NV -50%, PV -10%.
 
-### 8.7 Distance/base damage
+Shooter:
 
-- each ship length reduces about 10% of minimum base and maximum accuracy/damage;
-- general range a little over 10 lengths;
-- normal computed damage distributed 90/10 between selected target area and the other area, subject to wind-position rules;
-- at 112 m or less fire is always hull-targeted;
-- from a little over 6 lengths, hull-directed damage is 50%;
-- at one length maximum effectiveness is already reached; getting closer raises minimum possible damage, not maximum.
+- NV/anchored bonus equal to 10 less fatigue;
+- TV excludes upper-deck battery, retains 20% fire risk, and has accuracy penalty equal to +10 fatigue;
+- insufficient crew limits number of guns served.
 
-### 8.8 Rigging aim by target sail state
+Current implementation:
 
-- medium: normal; full: +50%; no/collected: -50%; few: -10%.
+- ammo families, modifiers, per-band loading, double reload, <=112 forced hull, target-sail factors, shooter NV/TV accuracy modifiers, upperworks/carronade exclusion and wind allocation are implemented/tested;
+- TV accuracy penalty is active;
+- **20% full-sail ignition risk is now implemented after an actual broadside**;
+- owner-approved PROJECT-RECONSTRUCTION raises that risk to 30% when wind enters through the firing side (ADR-0008);
+- source-omitted base-damage/range curve, literal long-range envelope, insufficient-crew gun service, morale consequences and true both-broadsides execution remain incomplete.
 
-### 8.9 Shooter sail state / crew service
-
-- no sail/anchored: bonus equivalent to 10% less fatigue;
-- full sail: upper-deck battery cannot be used, 20% fire risk remains, firing penalty equivalent to +10% fatigue;
-- one broadside costs +10% fatigue;
-- insufficient crew means only guns with enough servants may fire.
-
-Current implementation evidence:
-
-- all four ammunition families are represented; standard selectable reload ammunition is round, bar/chain, and grape, while double shot is a distinct reload action;
-- round-vs-rigging 50%, bar/chain-vs-hull 50%, long-range bar/chain /3, grape hull 50%, grape rigging 1/3, and double-shot explicit power/range modifiers are encoded/tested;
-- each broadside band tracks its own loaded ammunition; firing a band reloads the selected standard ammunition for that same band for the next turn while the opposite band retains its load;
-- double shot requires round shot already loaded in that band, blocks that band from firing during reload, costs +10 fatigue, and becomes loaded for the following turn;
-- at <=112 m effective aim is forced to hull;
-- target sail-state rigging modifiers MV 1.0, TV 1.5, PV 0.9, NV 0.5 are encoded/tested;
-- shooter NV applies the equivalent of 10 less fatigue; TV applies 10 more and excludes upperworks long guns and carronades from available power;
-- actual carronades are integrated by the explicit range contribution table in section 10;
-- the exact windward/leeward distribution layer is integrated by section 9.
-
-Still incomplete / deliberately not claimed:
-
-- the inherited stable base-damage/range curve remains in place because the manual explicitly omits the full computer damage algorithm; it does not yet reproduce the stated one-ship-length/10%-per-length envelope or general little-over-10-length range behavior;
-- round-shot rigging damage beyond 7 lengths cannot yet exercise the literal 7-length cap while the inherited stable firing envelope ends earlier;
-- the full-sail 20% fire-risk consequence awaits the fire subsystem;
-- insufficient-crew gun-service restriction is not yet implemented;
-- morale consequences of grapeshot await morale;
-- true both-broadsides-in-one-turn execution remains absent.
-
-Status: **PARTIAL** — explicit ammunition families, per-band loading, double-shot reload restrictions, <=112 m forced-hull rule, sail-state modifiers, and several exact ammunition multipliers are implemented/tested; source-omitted base damage/range and dependent fire/morale/crew-service pieces remain open.
+Status: **PARTIAL**.
 
 ## 9. Wind position and shooting effects
 
-Windward/leeward is determined by a 30° arc relative to wind at firing position.
+30° total wind fork.
 
-Target to windward:
+Target windward:
 
-- hull aim: 60% hull, 30% rigging, 10% lost;
-- rigging aim: 90% rigging, 0% hull, 10% lost.
+- hull aim 60 hull /30 rig /10 lost;
+- rig aim 0 hull /90 rig /10 lost.
 
-Target to leeward:
+Target leeward:
 
-- hull aim: 100% hull, 0% rigging;
-- rigging aim: 40% hull, 60% rigging.
+- hull aim100 hull;
+- rig aim40 hull /60 rig.
 
-Implementation:
+Current classification/allocation plus crosswind90/10 are implemented/tested.
 
-- the 30° total fork is represented as ±15° around the wind axis and opposite/leeward axis;
-- target-windward and target-leeward classification is deterministic and tested;
-- all four stated damage allocations plus normal crosswind 90/10 fallback are implemented before hull/rigging application.
-
-Verification: `tests/velmad-gunnery.test.js`.
-
-Status: **VERIFIED** for the explicit v1.2 windward/leeward classification and damage-allocation table.
+Status: **VERIFIED**.
 
 ## 10. Carronades
 
-Contribution to broadside power:
+Contribution: >300m0; <=300 one-third; <=225 one-half; <=150 full.
 
-- at 300 m or less: one third;
-- at 225 m or less: one half;
-- at 150 m or less: 100%.
+Actual historical carronades use this table; Spanish obuses remain distinct pending evidence; TV excludes upperworks/carronade contribution.
 
-Implementation:
-
-- actual historical pieces typed as `carronade` contribute at 0 beyond 300 m, 1/3 at <=300 m, 1/2 at <=225 m, and full power at <=150 m;
-- the contribution derives from each ship's historical fitted carronade calibres/counts;
-- Spanish obuses are kept distinct and are not silently treated as carronades without evidence;
-- full sail excludes the upperworks/carronade contribution as part of the section-8 full-sail firing restriction.
-
-Verification: `tests/velmad-gunnery.test.js`.
-
-Status: **VERIFIED for actual carronades in the current historical data path**. Spanish obus equivalence remains an evidence question rather than an assumed rule.
+Status: **VERIFIED for actual carronades in current historical data path**.
 
 ## 11. Boarding
 
 Eligibility:
 
-- ships close enough;
-- target has sails gathered/stopped, is stopped by collision, or has at least one fallen mast;
-- target morale below 10;
-- if both board, higher morale is boarder; tie -> greater crew.
+- close enough;
+- target sails gathered/stopped, stopped by collision, or >=1 fallen mast;
+- target morale<10;
+- if both board: higher morale boards; tie greater crew.
 
 Combat:
 
-- if a ship ordered any battery fire, boarding force is free men after gun-service needs for that band;
-- otherwise combat force is 2/3 crew;
+- if firing any battery, boarding force = free men after gun-service needs for that band; otherwise 2/3 crew;
 - attacker/defender ratio must finish >1;
-- defender grapeshot against attacker that turn: ratio ×0.6;
-- each morale point difference ±0.075;
-- fatigue comparison ±0.075;
-- each crew-quality level difference ±0.10;
-- attacker -0.1 per deck disadvantage; no bonus for deck advantage;
-- luck -0.20 to +0.20.
+- defender grapeshot against attacker that turn x0.6;
+- morale difference +/-0.075 each point;
+- fatigue comparison +/-0.075;
+- crew-quality level difference +/-0.10;
+- attacker -0.1/deck disadvantage; no deck advantage bonus;
+- luck -0.20..+0.20.
 
 Resistance/casualties:
 
-- higher crew quality lowers boarding casualties;
-- if target has not reached minimum prior casualties, casualties for both double and attacker gets -0.075;
-- minimum prior casualties: first 100, second 80, 74-gun 60, other 2-deckers 40, frigates 20, smaller 0;
+- higher quality lowers casualties;
+- if target has not reached minimum prior casualties, both casualties double and attacker -0.075;
+- minimum prior casualties: first100, second80, 74-gun60, other2-deckers40, frigates20, smaller0;
 - failed boarding gives attacker extra casualties;
-- successful boarding captures target, raises white flag, makes prisoners and assigns prize crew;
-- a previously captured ship in enemy possession may be recaptured without combat.
+- success captures, raises white flag, prisoners/prize crew;
+- captured enemy-held ship may be recaptured without combat.
 
 Status: **MISSING**.
 
 ## 12. Surrender
 
-- morale 0: surrender when receiving a new broadside;
-- hull <=1000: each broadside from <300 m triggers a 1–10 morale roll; roll greater than morale -> surrender.
+- morale0: surrender upon receiving a new broadside;
+- hull<=1000: every broadside from <300m triggers 1–10 morale roll; roll > morale => surrender.
 
 Status: **MISSING**.
 
 ## 13. White flag
 
-For one turn after surrender the ship cannot navigate, turn, board or fire and cannot be fired upon or boarded.
+For one turn after surrender: cannot navigate, turn, board or fire; cannot be fired upon/boarded.
 
 Status: **MISSING**.
 
 ## 14. Captured ships / prizes
 
-Captured ship:
+Captured cannot full sail/fire/board and cannot be fired by same-flag vessel.
 
-- cannot use full sail, fire or board;
-- cannot be fired upon by a vessel of the same flag.
+Prize crew: class1 50, class2 40, class3 30, class4 20, class5/6 10.
 
-Prize crew required:
-
-- first 50; second 40; third 30; fourth 20; fifth/sixth 10.
-
-Recapture:
-
-- captured ship >525 m from nearest friendly vessel: original crew retakes control and captures prize crew;
-- any recaptured vessel goes to 120% fatigue and white-flag state.
+Captured >525m from nearest friendly -> original crew retakes/captures prize crew; recaptured vessel fatigue120 + white flag.
 
 Status: **MISSING**.
 
 ## 15. Hull 0 and Hull 1
 
-Mandatory baseline replacing the former `HP 0 = sunk` shortcut:
+- Hull0 remains operational with penalties;
+- uncaptured Hull0 has 10% chance/turn to begin sinking; only actual sinking removes it;
+- Hull0 -> Hull1 by pumps/repair if fatigue<=100, cost+20;
+- Hull0 cannot use first/main/bottom battery; Hull1 can;
+- incoming damage can return repaired Hull1 to0;
+- Hull0/1 speed cap70%.
 
-- Hull 0 remains operational and may still navigate/fight subject to penalties;
-- an uncaptured Hull-0 ship has a 10% chance every turn to begin sinking;
-- only when actual sinking begins is the vessel out of combat, unable to navigate and removed from play;
-- Hull 0 may be pumped/repaired to Hull 1 if fatigue is at most 100%; cost +20% fatigue;
-- Hull 0 cannot use the first/main/bottom battery;
-- Hull 1 may use that battery again;
-- sustained incoming fire may force a repaired Hull 1 back to Hull 0;
-- Hull 0 and Hull 1 are capped at 70% speed.
-
-Implementation:
-
-- explicit Hull 0, Hull 1 and `sinking` state behavior;
-- deterministic `<10%` sinking check and non-trigger case;
-- lower-deck long-gun broadside removed from available firepower at Hull 0 and restored at Hull 1;
-- 0→1 pump eligibility at fatigue <=100 and exact +20 fatigue cost;
-- 70% speed cap at Hull 0/1;
-- minimal player damage-control UI for ordering pump/repair;
-- old immediate sinking and extra destruction-casualty shortcut removed.
-
-Verification: `tests/velmad-hull-fatigue.test.js`.
+Implemented/tested including damage-control UI.
 
 Status: **VERIFIED**.
 
 ## 16. Critical mast knockdown
 
-- 3 masts remaining: mast below 500 points falls if it then suffers >50 damage;
-- 2 masts remaining: affected mast must be below 300 for the critical knockdown;
-- 1 mast remaining: must be reduced to 0.
+- 3 masts: mast below500 falls if then suffers >50 damage;
+- 2 masts: affected mast must be below300;
+- 1 mast: must reach0.
+
+Current collision-specific weak-mast fall is an ADR-0008 project reconstruction and does not substitute for this general source critical rule.
 
 Status: **MISSING/PARTIAL**.
 
 ## 17. Fallen / dragging mast
 
-- 50% chance fallen mast remains tangled, covers one side and drags;
-- if tangled, 75% chance it falls in wind-pushed direction, 25% opposite;
-- wind entering port -> falls starboard and vice versa;
-- firing from covered side: 50% fire risk and precision/power penalty equivalent to +20% fatigue;
-- incoming broadside aimed at covered side: fire chance = broadside power /10 percent;
-- while dragging, automatically turn one rudder point toward that side each turn and max speed 90%;
-- cutting party costs +10% fatigue per turn and has 50% success.
+Source:
 
-Status: **MISSING** as a complete state/action loop.
+- 50% chance fallen mast remains tangled, covers a side and drags;
+- if tangled, 75% falls wind-pushed direction,25% opposite; wind entering port -> falls starboard and vice versa;
+- firing covered side: 50% fire risk + accuracy/power penalty equivalent +20 fatigue;
+- incoming broadside at covered side: fire chance=broadside power/10 percent;
+- dragging auto-turns one rudder point toward side each turn, max speed90%;
+- cutting party +10 fatigue/turn, 50% success.
+
+Current implementation:
+
+- cutting-party +10 fatigue and 50% success now have a playable owning action;
+- collision-specific weak mast may fall toward the colliding ship and entangle both; current project values are <=30% health, 50% fall check and 75% entanglement;
+- entangled pair has no translational movement until cutting succeeds;
+- ordinary non-collision 50% tangle, wind-driven fall side, covered-side firing/fire risk, dragging auto-turn and 90% cap remain incomplete.
+
+Status: **PARTIAL + PROJECT-RECONSTRUCTION for collision-specific entanglement**.
 
 ## 18. Critical impacts, magazine and captain
 
-- round-shot broadside from <300 m: 1% base critical chance;
-- after critical, magazine-explosion chance uses guns >24-pdr counted ×2 plus 24-pdr guns, but translated formula wording requires reconciliation before exact encoding;
-- if magazine explosion does not occur, ship catches fire;
-- below 2000 hull, critical percentage is related to `damage/100` as written;
-- at Hull 0/1 probabilities increase tenfold;
-- each quarterdeck piece destroyed: 10% chance of hitting captain;
-- captain hit changes surrender range from 1000 to 1500 hull according to manual wording;
-- captain killed: -1 morale.
+- round-shot broadside <300m:1% base critical;
+- magazine formula counts >24pdr x2 plus 24pdr guns, but translated wording remains ambiguous;
+- if no explosion => fire;
+- below2000 hull critical percentage related to damage/100 wording;
+- Hull0/1 probabilities x10;
+- each quarterdeck piece destroyed 10% captain hit;
+- captain hit changes surrender threshold1000->1500 per wording;
+- captain killed -1 morale.
 
-Status: **SOURCE-AMBIGUOUS / MISSING** — do not invent the ambiguous percentage formula.
+Status: **SOURCE-AMBIGUOUS / MISSING**.
 
 ## 19. Helm damage states
 
 1. intact;
-2. damaged: cannot turn two points;
-3. very damaged: chance to turn one point, otherwise straight — first-class 3-decker 20%, second-class 3/2-decker 40%, 74-gun 60%, fourth 80%, inferior classes always;
-4. destroyed/blocked/disabled: half the one-point chance of very damaged.
+2. damaged: cannot turn two source points;
+3. very damaged: one-point chance — first-class3-decker20%, second-class3/2-decker40%, 74-gun60%, fourth80%, inferior100%;
+4. destroyed/blocked/disabled: half state3 chance.
 
-Status: **PARTIAL** — current binary damaged-rudder behavior is insufficient.
+Current playable rudder remains binary damaged/not-damaged; damaged limits prototype helm to ±1.
+
+Status: **PARTIAL / PLAYABLE DIVERGENCE**.
 
 ## 20. Fires
 
-Levels:
-
-1. local; 2. extended; 3. serious; 4. widespread/general; 5. ship in flames.
+Source levels: 1 local,2 extended,3 serious,4 widespread/general,5 ship in flames.
 
 Rules:
 
-- new fire starts level 1; another declared fire raises level by 1;
-- without assigned fire-fighting team, level rises by 1 each turn;
-- level 3: randomly damage one mast or hull by 50 and 33% explosion risk each turn;
-- level 4: damage both by 100 and 66% explosion risk;
-- with no mast remaining, fire damage goes to hull down to 0;
-- level 5: crew abandons ship; vessel out of combat and later explodes/burns out/sinks;
-- fire-fighting party +10% fatigue per assigned turn;
-- level-1 control chance 50%, minus 10 percentage points per higher level;
-- success reduces 1 level if ship ordered battery fire or sail change, otherwise 2;
-- failure: 50% increase one level / 50% remain;
-- collided/entangled ships transmit fire with 10% × fire level chance per turn.
+- new fire starts1; another declared fire +1;
+- without team +1/turn;
+- L3 random mast/hull50 and 33% explosion/turn;
+- L4 both100 and66% explosion;
+- no masts -> fire damage hull down0;
+- L5 crew abandons/OOC/later explodes-burns-sinks;
+- fire party +10 fatigue/turn;
+- control chance L1 50%, -10pp/higher level;
+- success reduces1 if battery fire/sail change, otherwise2;
+- failure 50% +1 /50% remain;
+- collided/entangled transmit chance10% x fire level/turn.
 
-Status: **MISSING**.
+Current implementation now has persistent `fireLevel`/`onFire` state and an actual full-sail broadside can ignite level1 at source 20%. Wind entering firing side raises the playable probability to project-calibrated30%. The remaining progression, damage, explosion, firefighting and transmission loop is not yet implemented.
+
+Status: **PARTIAL**.
 
 ## 21. Fear / preservation incentive
 
-- in ranking/captain-ladder games, owner of a captured/sunk/destroyed ship receives only 10% of the points that vessel earned;
-- mechanic intentionally discourages unrealistic fighting to destruction.
+Owner of captured/sunk/destroyed ship receives only10% of points that vessel earned, discouraging unrealistic destruction fighting.
 
 Status: **MISSING**.
 
 ## 22. End of battle
 
-Battle may end by:
-
-- elimination of a fleet or capture of remaining ships;
-- scenario turn limit;
-- both admirals having chosen previous turn to break contact;
-- after turn 40: 3 turns without shooting;
-- after turn 60: 1 turn without shooting.
+May end by fleet elimination/capture, scenario turn limit, both admirals breaking contact previous turn, after turn40 three turns without shooting, after turn60 one turn without shooting.
 
 Status: **PARTIAL/MISSING**.
 
 ## 23. Score and victory
 
-- 1 point per hull/rigging damage point caused;
-- sunk/exploded ship: 1000;
-- captured ship: 2000;
-- mast knocked down: 300;
-- points earned by a ship's shooting are lost if that ship is captured or sunk;
-- recapture restores its points and removes enemy's 2000 capture points;
-- no size/class distinction in these awards.
+- 1 point per hull/rig damage;
+- sunk/exploded1000; captured2000; mast down300;
+- shooting points earned by ship lost if ship captured/sunk;
+- recapture restores own points/removes enemy capture2000;
+- no class distinction in awards.
 
 Status: **MISSING**.
 
 ## 24. Signals
 
-- voice/horns to vessel within 150 m, about 100 characters maximum;
-- flags use a separate Velmad code not reproduced in this manual;
-- scenario determines whether pre-battle planning is allowed and whether before enemy deployment or at turn 0;
-- after start, communication is through game signals;
-- each ship may send one message per turn, received at start of next turn, and receive unlimited messages;
-- admiral may message whole fleet or one ship;
-- squadron/division leader may message subordinate group or one fleet ship;
-- other ships may message one recipient per turn.
+- voice/horns <=150m, about100 chars;
+- flag code separate/not reproduced;
+- scenario governs pre-battle planning/timing;
+- after start, game signals only;
+- each ship sends one message/turn, received next turn, receives unlimited;
+- admiral may message fleet or one ship; squadron/division leader subordinate group or one fleet ship; others one recipient/turn.
 
 Status: **MISSING**.
 
 ## 25. Wind change and visibility
 
-- every turn: 5% wind-change probability — 4% slight, 1% abrupt;
-- scenario may override/define this;
-- visibility may change turn by turn and tend to be limited by fog/sunset as scenario-defined.
+- each turn 5% wind-change:4% slight,1% abrupt; scenario may override;
+- visibility may change by scenario/fog/sunset.
 
-Status: **PARTIAL** — wind exists, but the current prototype wind-change algorithm is not this exact table and visibility is incomplete.
+Status: **PARTIAL** — wind exists, current prototype wind-change algorithm differs; visibility incomplete.
 
 ## 26. Court-martial
 
-- admiral and squadron/division leaders may mark subordinate ships for court-martial;
-- such ships receive no distributed fleet points after battle;
-- they retain points earned themselves and half points from prizes.
+Admiral/squadron leaders may mark subordinate ships; they receive no distributed fleet points, retain own points and half prize points.
 
 Status: **MISSING**.
 
 ## 27. Time scale and conventions
 
-- one turn = 5 minutes of action;
-- movement is closer to 2.5 minutes, deliberately compressed;
-- one rules `ship length` = 75 m, including bowsprit, selected as a round measure.
+- one turn=5 minutes action;
+- movement closer to2.5 minutes, deliberately compressed;
+- one rules ship length=75m including bowsprit.
 
-Status: **MISSING/PARTIAL** — 75 m is now an explicit gunnery constant where required, but turn/movement timing conventions are not yet represented as simulator metadata/mechanics.
+Status: **MISSING/PARTIAL** — 75m exists as explicit gunnery constant; timing metadata/mechanics incomplete.
 
-## 28. Algorithms explicitly omitted by the v1.2 manual
+## 28. Algorithms explicitly omitted by the manual
 
-The manual explicitly omits because the original computer handled them:
-
-- detailed movement calculation system;
-- detailed combat-damage calculation system.
+The source explicitly omits detailed movement calculation and detailed combat-damage calculation because the original computer handled them.
 
 Status: **SOURCE-OMITTED**.
 
-These algorithms must not be invented and labelled Velmad. Stable/original implementation behavior and later historical/technical research must be identified separately as evidence.
+Do not invent these algorithms and label them source-derived. Stable-prototype behavior and later historical/technical research must be identified separately.
 
 ---
 
-# Current verified / project-rule slice — 2026-09-20
+# Current source-verified / project-rule slice — 2026-09-20
 
-Verified explicit mechanics now include:
+Source-verified components currently include Hull0/1/sinking, current four-ship class dependency, baseline 0/1/2 helm logic as a source reference, head-to-wind tacking rule, windward/leeward fire allocation, actual-carronade range table, and several crew-quality shooting mechanics.
 
-- Hull 0 / Hull 1 / sinking (section 15);
-- current four-ship vessel classification/dependency path (section 3);
-- explicit rudder-point/history/class manoeuvre rules (section 5);
-- explicit tacking stop/exit rule (section 6);
-- windward/leeward firing classification and allocation (section 9);
-- actual-carronade range contribution table (section 10);
-- crew-quality shooting and manoeuvre portions, while boarding remains pending (section 7 stays PARTIAL).
+The playable runtime intentionally differs in important areas:
 
-A substantial ammunition/loading slice in section 8 is implemented and tested, but section 8 remains PARTIAL because the manual-omitted base damage algorithm, current inherited range envelope, crew-service, fire and morale dependencies are not complete.
+- ADR-0006: +10 fatigue per sail point crossed;
+- ADR-0007: persistent translational inertia and strict T-like rake geometry;
+- ADR-0008: stable-prototype nine-position helm; section-specific collision momentum; alignment-based stern rudder risk; collision weak-mast/entanglement behavior; wind-amplified full-sail ignition; hidden enemy fatigue.
 
-Fatigue remains PARTIAL and now carries an explicit PROJECT-DIVERGENCE. ADR-0006 supersedes ADR-0005 for playable sail-change fatigue: each crossed sail point in `NV↔PV↔MV↔TV` costs +10%, so direct jumps cost 10/20/30 according to distance. This rule is deliberately not presented as literal Velmad v1.2.
+A substantial ammunition/loading slice is implemented, but source-omitted base damage/range, crew service, morale and complete fire dependencies remain open.
 
 # Release gate
 
-The historical simulator must not be described as having `Velmad v1.2 mechanical parity` until every applicable row above is VERIFIED and every SOURCE-AMBIGUOUS/SOURCE-OMITTED/PROJECT-DIVERGENCE item is explicitly resolved or consciously accepted as a post-baseline replacement.
+The simulator must not be described as having complete literal v1.2 mechanical parity while any applicable row is MISSING/PARTIAL/SOURCE-AMBIGUOUS/SOURCE-OMITTED or while accepted PROJECT-DIVERGENCE rules replace the source behavior.
 
-After that baseline exists, changes follow ADR-0001:
-
-1. state the Velmad rule being replaced;
-2. identify the represented phenomenon;
-3. provide strong historical/technical/physical evidence;
-4. compare expected behavior;
-5. document uncertainty;
-6. test the replacement.
+Every future replacement must state the source rule being replaced, the represented phenomenon, evidence/reconstruction basis, uncertainty and deterministic tests.
