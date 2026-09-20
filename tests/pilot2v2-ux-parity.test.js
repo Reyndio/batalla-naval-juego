@@ -15,7 +15,7 @@ function stateAtBroadside() {
   const attacker = state.ships.find(s => s.side === Core.SIDE_ROYAL_NAVY);
   const target = state.ships.find(s => s.side === Core.SIDE_REAL_ARMADA);
   attacker.x = 300; attacker.y = 300; attacker.heading = 0;
-  target.x = 380; target.y = 300; target.heading = 0;
+  target.x = 450; target.y = 300; target.heading = 0;
   attacker.order = {
     ...attacker.order,
     fire: true,
@@ -39,7 +39,8 @@ test('prototype-parity command surface includes explicit start, clock, pause, sa
     assert.match(html, new RegExp(`id=["']${id}["']`), `missing restored control ${id}`);
   }
   assert.match(html, /Iniciar partida/);
-  assert.match(html, /Cargar para el próximo turno/);
+  assert.match(html, /Munición a cargar tras disparar esta banda/);
+  assert.match(html, /Palanqueta \/ cadena/);
   assert.match(html, /Sin vela/);
   assert.match(html, /Poca vela/);
   assert.match(html, /Media vela/);
@@ -141,12 +142,15 @@ test('rigging fire damages independent mast state and total rig state', () => {
   assert.ok(target.masts.main.health < beforeMain);
 });
 
-test('loaded ammunition is distinct from the ammunition ordered for the next load', () => {
+test('loaded ammunition is tracked independently by band and next load is applied only to the band that fired', () => {
   const { state, attacker } = stateAtBroadside();
-  attacker.loadedAmmo = 'ROUND_SHOT';
-  attacker.order.ammo = 'DOUBLE_SHOT';
+  Core.ensureAmmoState(attacker);
+  attacker.loadedAmmoByBand.BABOR = 'ROUND_SHOT';
+  attacker.loadedAmmoByBand.ESTRIBOR = 'ROUND_SHOT';
+  attacker.order.ammo = 'BAR_CHAIN';
   Core.resolveTurn(state, { rng: () => 0.5, autoSides: [] });
-  assert.equal(attacker.loadedAmmo, 'DOUBLE_SHOT');
+  assert.equal(attacker.loadedAmmoByBand.ESTRIBOR, 'BAR_CHAIN');
+  assert.equal(attacker.loadedAmmoByBand.BABOR, 'ROUND_SHOT');
 });
 
 test('player can explicitly order port or starboard fire and confirmations reopen after turn resolution', () => {
