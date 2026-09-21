@@ -99,24 +99,31 @@ For the first playable collision-entanglement implementation:
 
 The +10 fatigue and 50% cutting success follow the source manual's fallen-mast cutting rule. The 30% critical-health threshold and 75% collision-entanglement probability are explicit project reconstructions for the owner-requested collision case. The general source rules for ordinary mast fall, wind-driven fall side and dragging-mast behavior remain separately applicable and are not replaced by this collision-specific rule.
 
-## Decision 4 — full-sail firing accuracy, ignition and fire control
+## Decision 4 — full-sail firing accuracy, wind-angle ignition and fire control
 
 The source manual explicitly states that when firing at full sail:
 
 - the upper-deck battery is excluded;
 - firing accuracy suffers a penalty equivalent to +10% fatigue;
-- despite the upper-battery exclusion, there remains a 20% risk of causing a fire.
+- despite the upper-battery exclusion, there remains a flat 20% risk of causing a fire.
 
-The first two effects were already implemented. The runtime now also applies the 20% ignition check after an actual full-sail broadside.
+The first two source effects remain active. The owner has now replaced the flat 20% ignition line in the **playable runtime** with an angle-sensitive project rule so that wind direction changes the ignition risk.
 
-The owner additionally requires increased fire risk when wind enters through the side being fired. Until stronger evidence provides a calibrated value, the playable project rule is:
+For a broadside fired at full sail, define the firing-side normal as 90° out from the ship's heading on the selected side. The playable calibration is:
 
-- ordinary full-sail broadside: 20%;
-- wind entering through the firing side: 30%.
+- wind not entering through the firing side, or more than 45° away from that firing-side normal: **10%** ignition risk;
+- wind entering the firing side obliquely, from more than 15° through 45° away from the firing-side normal: **15%**;
+- wind arriving almost directly against the direction of the broadside, within ±15° of the firing-side normal: **20%**.
 
-The 30% figure is a **PROJECT-RECONSTRUCTION calibration**, not source-derived. It may be revised after historical/physical research without changing the underlying rule that the risk increases.
+The rule is symmetric for port and starboard. The boundaries are inclusive at 15° and 45° so deterministic tests can cover the transitions exactly.
 
-Once a fire exists, the playable loop now implements the source level/control mechanics:
+### Classification
+
+**OWNER-APPROVED PROJECT-DIVERGENCE / PROJECT-RECONSTRUCTION.**
+
+The source's flat 20% risk remains documented as provenance, but the current playable simulator intentionally uses 10/15/20% by wind angle. The ±15° direct zone and ±45° side-entry zone are gameplay/physical reconstruction tolerances, not recovered source values. They may be recalibrated if stronger historical or physical evidence is found.
+
+Once a fire exists, the playable loop implements the source level/control mechanics:
 
 - new fire begins at level 1; another declared fire raises one level, capped at 5;
 - without a fire-fighting party, fire rises one level each turn;
@@ -148,7 +155,7 @@ Deterministic tests cover:
 - bow/centre/stern/exact-astern collision momentum retention;
 - alignment-dependent stern rudder risk reaching 75% exactly astern;
 - critically weak mast fall/entanglement and 50% carpenter release check;
-- full-sail 20%/30% fire-risk calculation and actual ignition;
+- full-sail 10%/15%/20% fire-risk calculation, both sides, exact angular boundaries and actual ignition;
 - unattended fire escalation, fire-control percentages, success/failure reduction/escalation, level-3/4 damage and explosion risk, and entangled-fire transmission;
 - playable wiring for hidden enemy fatigue, carpenter action and fire-fighting action.
 
@@ -158,6 +165,6 @@ The project deliberately separates three evidence layers:
 
 1. source-manual mechanics retained for provenance and historical baseline;
 2. stable-prototype behavior restored where the user explicitly requires the established playable control model;
-3. project reconstructions for collision physics and wind-amplified ignition where exact historical/source algorithms are unavailable.
+3. project reconstructions/divergences for collision physics and angle-sensitive full-sail ignition where exact historical/source algorithms are unavailable or intentionally replaced.
 
-Future documentation must not describe the playable helm as source-manual 0/1/2 parity while ADR-0008 is active.
+Future documentation must not describe the playable helm as source-manual 0/1/2 parity or the playable full-sail ignition as the source's flat 20% rule while ADR-0008 is active.
