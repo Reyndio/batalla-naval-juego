@@ -11,11 +11,13 @@
 
   if (!Core) throw new Error('CombatRules requires Pilot2v2Core.');
 
-  // Source rule: firing at full sail retains a 20% fire risk.
-  const FULL_SAIL_FIRE_RISK = 0.20;
-  // Owner-approved project rule: if the wind enters through the firing side, risk rises.
-  // 30% is the current explicit project calibration (1.5x the source baseline).
-  const FULL_SAIL_WINDWARD_BATTERY_FIRE_RISK = 0.30;
+  // Owner-approved playable ignition calibration. This deliberately diverges from
+  // the source manual's flat 20% full-sail fire-risk line and makes wind angle matter.
+  const FULL_SAIL_FIRE_RISK = 0.10;
+  const FULL_SAIL_OBLIQUE_WIND_FIRE_RISK = 0.15;
+  const FULL_SAIL_DIRECT_WIND_FIRE_RISK = 0.20;
+  const FULL_SAIL_DIRECT_WIND_TOLERANCE_DEG = 15;
+  const FULL_SAIL_SIDE_WIND_TOLERANCE_DEG = 45;
 
   const FIRE_CONTROL_BASE_CHANCE = 0.50;
   const FIRE_CONTROL_LEVEL_PENALTY = 0.10;
@@ -29,6 +31,11 @@
 
   function clamp(v, min, max) { return Math.max(min, Math.min(max, v)); }
   function normalizeAngle(deg) { return ((deg % 360) + 360) % 360; }
+  function angularDistance(a, b) {
+    let d = Math.abs(normalizeAngle(a) - normalizeAngle(b));
+    if (d > 180) d = 360 - d;
+    return d;
+  }
   function rngValue(rng) { return (rng || Math.random)(); }
   function activeShip(ship) { return !!ship && !ship.sunk && !ship.sinking && !ship.disabled; }
 
@@ -39,10 +46,26 @@
     return null;
   }
 
+  function firingBandNormal(heading, firingBand) {
+    if (firingBand === 'ESTRIBOR') return normalizeAngle(heading + 90);
+    if (firingBand === 'BABOR') return normalizeAngle(heading - 90);
+    return null;
+  }
+
+  function fullSailWindExposure(heading, windFromDeg, firingBand) {
+    const normal = firingBandNormal(heading, firingBand);
+    if (normal == null) return { type: 'NONE', offAxis: 180, normal: null };
+    const offAxis = angularDistance(windFromDeg, normal);
+    if (offAxis <= FULL_SAIL_DIRECT_WIND_TOLERANCE_DEG) return { type: 'DIRECT', offAxis, normal };
+    if (offAxis <= FULL_SAIL_SIDE_WIND_TOLERANCE_DEG) return { type: 'OBLIQUE', offAxis, normal };
+    return { type: 'NONE', offAxis, normal };
+  }
+
   function fullSailFireRisk(heading, windFromDeg, firingBand) {
-    return windEnteringBand(heading, windFromDeg) === firingBand
-      ? FULL_SAIL_WINDWARD_BATTERY_FIRE_RISK
-      : FULL_SAIL_FIRE_RISK;
+    const exposure = fullSailWindExposure(heading, windFromDeg, firingBand);
+    if (exposure.type === 'DIRECT') return FULL_SAIL_DIRECT_WIND_FIRE_RISK;
+    if (exposure.type === 'OBLIQUE') return FULL_SAIL_OBLIQUE_WIND_FIRE_RISK;
+    return FULL_SAIL_FIRE_RISK;
   }
 
   function initializeShipCombatState(ship) {
@@ -85,13 +108,16 @@
     const ship = state.ships.find(s => s.id === snapshot.id);
     if (!ship || ship.sunk || ship.sinking) return { checked: false, ignited: false, chance: 0 };
 
+    const exposure = fullSailWindExposure(snapshot.heading, snapshot.windFromDeg, band);
     const chance = fullSailFireRisk(snapshot.heading, snapshot.windFromDeg, band);
     const ignited = rngValue(rng) < chance;
     if (ignited) {
-      const windLabel = chance > FULL_SAIL_FIRE_RISK ? 'al disparar a toda vela con el viento entrando por la banda de disparo' : 'al disparar a toda vela';
+      let windLabel = 'al disparar a toda vela';
+      if (exposure.type === 'DIRECT') windLabel += ' con el viento entrando casi perpendicularmente por la banda de disparo';
+      else if (exposure.type === 'OBLIQUE') windLabel += ' con el viento entrando oblicuamente por la banda de disparo';
       declareFire(state, ship, `provoca fuego ${windLabel}`);
     }
-    return { checked: true, ignited, chance };
+    return { checked: true, ignited, chance, exposure: exposure.type, windOffAxis: exposure.offAxis };
   }
 
   function syncRig(ship) {
@@ -290,6 +316,7 @@
 
     Core.fullSailFireRisk = fullSailFireRisk;
     Core.windEnteringBand = windEnteringBand;
+    Core.fullSailWindExposure = fullSailWindExposure;
     Core.declareFire = declareFire;
     Core.fireControlChance = fireControlChance;
     Core.combatRules = api;
@@ -300,7 +327,10 @@
 
   const api = {
     FULL_SAIL_FIRE_RISK,
-    FULL_SAIL_WINDWARD_BATTERY_FIRE_RISK,
+    FULL_SAIL_OBLIQUE_WIND_FIRE_RISK,
+    FULL_SAIL_DIRECT_WIND_FIRE_RISK,
+    FULL_SAIL_DIRECT_WIND_TOLERANCE_DEG,
+    FULL_SAIL_SIDE_WIND_TOLERANCE_DEG,
     FIRE_CONTROL_BASE_CHANCE,
     FIRE_CONTROL_LEVEL_PENALTY,
     FIRE_LEVEL3_DAMAGE,
@@ -309,6 +339,8 @@
     FIRE_LEVEL4_EXPLOSION_CHANCE,
     FIRE_TRANSMISSION_PER_LEVEL,
     windEnteringBand,
+    firingBandNormal,
+    fullSailWindExposure,
     fullSailFireRisk,
     initializeShipCombatState,
     resetCombatState,
