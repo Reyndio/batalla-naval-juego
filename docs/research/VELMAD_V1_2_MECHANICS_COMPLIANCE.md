@@ -193,18 +193,18 @@ Target rigging factor: MV normal, TV +50%, NV -50%, PV -10%.
 Shooter:
 
 - NV/anchored bonus equal to 10 less fatigue;
-- TV excludes upper-deck battery, retains 20% fire risk, and has accuracy penalty equal to +10 fatigue;
+- TV excludes upper-deck battery, retains a source-stated flat 20% fire risk, and has accuracy penalty equal to +10 fatigue;
 - insufficient crew limits number of guns served.
 
 Current implementation:
 
 - ammo families, modifiers, per-band loading, double reload, <=112 forced hull, target-sail factors, shooter NV/TV accuracy modifiers, upperworks/carronade exclusion and wind allocation are implemented/tested;
-- TV accuracy penalty is active;
-- **20% full-sail ignition risk is implemented after an actual broadside**;
-- owner-approved PROJECT-RECONSTRUCTION raises that risk to 30% when wind enters through the firing side (ADR-0008);
+- TV accuracy penalty and upperworks restriction remain active;
+- the playable full-sail ignition trigger intentionally **diverges** from the source flat20% line under ADR-0008: 10% when wind is not entering the firing side (>45° off the firing-side normal), 15% for oblique side-entry (>15° through45° off-axis), and20% for near-direct incoming wind within±15° of the firing-side normal;
+- the 10/15/20 rule is symmetric for port/starboard and deterministic tests cover exact15°/45° boundaries and actual ignition;
 - source-omitted base-damage/range curve, literal long-range envelope, insufficient-crew gun service, morale consequences and true both-broadsides execution remain incomplete.
 
-Status: **PARTIAL**.
+Status: **PARTIAL / PLAYABLE PROJECT-DIVERGENCE for full-sail ignition**.
 
 ## 9. Wind position and shooting effects
 
@@ -384,11 +384,11 @@ Current implementation:
 - L4 applies100 hull +100 mast damage, or redirects unavailable mast damage to hull when dismasted, plus66% explosion risk;
 - L5 disables the ship as abandoned/out-of-combat; explosion destroys it;
 - entangled fire transmission uses10% x source fire level/turn;
-- full-sail actual broadside ignition uses source20%, raised to project-calibrated30% when wind enters through the firing side.
+- full-sail ignition is an ADR-0008 **PLAYABLE PROJECT-DIVERGENCE**: 10% outside the firing-side wind cone,15% for oblique incoming wind,20% for near-direct incoming wind, with±15°/±45° tolerances.
 
 Unresolved fire-related dependencies remain outside this loop: source-ambiguous critical-hit/magazine triggers in section18, and ordinary fallen-mast covered-side fire triggers in section17.
 
-Status: **VERIFIED for the explicit fire state/progression/control/damage/transmission loop; dependent external fire triggers remain PARTIAL in their owning sections**.
+Status: **VERIFIED for the explicit fire state/progression/control/damage/transmission loop; PLAYABLE PROJECT-DIVERGENCE for the full-sail ignition trigger; dependent external fire triggers remain PARTIAL in their owning sections**.
 
 ## 21. Fear / preservation incentive
 
@@ -462,7 +462,7 @@ The playable runtime intentionally differs in important areas:
 
 - ADR-0006: +10 fatigue per sail point crossed;
 - ADR-0007: persistent translational inertia and strict T-like rake geometry;
-- ADR-0008: stable-prototype nine-position helm; section-specific collision momentum; alignment-based stern rudder risk; collision weak-mast/entanglement behavior; wind-amplified full-sail ignition; hidden enemy fatigue.
+- ADR-0008: stable-prototype nine-position helm; section-specific collision momentum; alignment-based stern rudder risk; collision weak-mast/entanglement behavior; angle-sensitive full-sail ignition at10/15/20%; hidden enemy fatigue.
 
 A substantial ammunition/loading slice is implemented, but source-omitted base damage/range, crew service and morale remain open. Fire progression itself is now implemented; unresolved fire triggers remain tied to sections17/18.
 
