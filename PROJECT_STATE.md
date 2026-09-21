@@ -10,11 +10,11 @@ Active implementation/validation branch: `feature/restore-prototype-ux-parity`.
 
 PR #2 — `Restore prototype interaction parity in historical 2v2 pilot` — remains **draft**. Do not merge it merely for convenience; mechanical and user-facing validation are still active gates.
 
-Latest validated playable implementation/test head: `7069eb1365108c68dce57ca3e4202233fe593551`.
-Latest active documentation before this state commit: `7b0597b66782d0cf575fe1639461291bfd011264`.
+Latest validated playable implementation/test head: `461af63c341d90393a49af556d2573e91e98078e`.
+Latest active documentation before this state commit: `3a48d6a1042470e67c2de0d408a27ab158620593`.
 ADR-0006: sail fatigue per point.
 ADR-0007: inertia / strict T-like raking geometry.
-ADR-0008: restored prototype rudder, collision response/entanglement, full-sail ignition/fire loop and hidden enemy fatigue.
+ADR-0008: restored prototype rudder, collision response/entanglement, angle-sensitive full-sail ignition/fire loop and hidden enemy fatigue.
 
 ## Current milestone
 
@@ -35,7 +35,7 @@ ADR-0004 remains the general technical source policy. Current playable deviation
 
 - ADR-0006 — +10 fatigue per sail point crossed;
 - ADR-0007 — persistent translational inertia and strict T-like rake geometry;
-- ADR-0008 — stable-prototype nine-position helm, collision physics/entanglement, wind-amplified full-sail ignition and enemy-information privacy.
+- ADR-0008 — stable-prototype nine-position helm, collision physics/entanglement, angle-sensitive full-sail ignition and enemy-information privacy.
 
 The playable interface does not display the baseline product name. Internal research/ADR/compliance documents retain source attribution for provenance.
 
@@ -113,12 +113,15 @@ Ordinary non-collision dragging-mast/wind-side behavior remains incomplete.
 
 At TV the existing source effects remain active: upperworks/carronade contribution excluded and accuracy penalty equivalent to +10 fatigue.
 
-Ignition:
+The source manual's flat20% full-sail ignition line is retained as provenance but deliberately replaced in the playable runtime by an angle-sensitive project rule:
 
-- actual ordinary full-sail broadside:20%;
-- wind entering through the firing side: project-calibrated30%.
+- **10%** when wind is not entering through the firing side, defined as more than45° from the firing-side normal;
+- **15%** when wind enters obliquely, more than15° and up to45° from that normal;
+- **20%** when wind is nearly directly opposed to the broadside, within±15° of the firing-side normal.
 
-The playable fire state/progression/control loop is now implemented:
+The rule is symmetric for babor/estribor. The±15° and±45° boundaries are current project calibration tolerances and are deterministically tested.
+
+The playable fire state/progression/control loop remains implemented:
 
 - new fire starts L1; additional declaration +1;
 - unattended fire +1 level/turn;
@@ -132,8 +135,6 @@ The playable fire state/progression/control loop is now implemented:
 - explosion destroys vessel;
 - fire transmits between entangled ships at10% × source fire level per turn.
 
-The damage-control UI exposes a fire-fighting action and current own fire level/control chance. Unresolved independent fire triggers remain in their owning critical-hit and ordinary fallen-mast sections.
-
 ### Enemy-information privacy
 
 Exact enemy fatigue is hidden in force cards and blocked-fire report lines. Enemy fatigue remains fully simulated internally.
@@ -144,21 +145,16 @@ Target/threat red rings, persistent Babor/Estribor selection and red battery-sid
 
 ## Validation / deployment
 
-Latest validated implementation/test head: `7069eb1365108c68dce57ca3e4202233fe593551`.
+Implementation/test/documentation head `461af63c341d90393a49af556d2573e91e98078e` reached **live** through Render deploy `dep-dao87rff3r2c73ekj6og` after the complete repository test suite passed.
 
-Render deploy `dep-dao4q67lk1mc73fs4qjg` reached **live** after the full test suite passed.
+Current suite contains **87 tests** after adding three deterministic angle-sensitive ignition tests.
 
-Validated suite: **84 tests, 0 failed**.
+New coverage for the ignition recalibration includes:
 
-New coverage in this work unit includes:
-
-- exact prototype helm tables/limits and TV no-±4 rule;
-- collision momentum by section and exact-astern75% rudder risk;
-- weak collision mast fall,75% entanglement,50% carpenter release;
-- inertia consuming section-specific collision momentum and zeroing while entangled;
-- full-sail20/30 ignition and actual ignition only after a real broadside;
-- unattended fire escalation, fire-fighting chances/success/failure, L3/L4 damage/explosion, entangled-fire transmission;
-- browser damage-control UI parsing and hidden enemy fatigue.
+- 10/15/20% risk tiers;
+- exact ±15° direct-wind and ±45° side-entry boundaries;
+- symmetric port/starboard behavior;
+- actual full-sail ignition using the direct-wind20% tier.
 
 Development service:
 
@@ -175,7 +171,7 @@ Stable reference service remains untouched.
 - ADR-0005: prior direct-extremes sail reconstruction; superseded by ADR-0006.
 - ADR-0006: +10 fatigue per sail point crossed.
 - ADR-0007: persistent inertia and strict T-like rake geometry.
-- ADR-0008: prototype helm; collision section momentum/rudder risk; collision mast entanglement; full-sail ignition/fire control; hidden enemy fatigue.
+- ADR-0008: prototype helm; collision section momentum/rudder risk; collision mast entanglement; angle-sensitive full-sail ignition/fire control; hidden enemy fatigue.
 
 ## Major work still incomplete
 
@@ -183,7 +179,7 @@ Morale/combat capability; source-omitted gunnery base range/damage and crew-serv
 
 ## Next concrete task
 
-Immediate priority is live user validation of the restored prototype helm, collision response/exact-astern behavior, mast entanglement/carpenter release, full-sail ignition/fire control and enemy-information hiding. Then continue morale/surrender/boarding and the remaining mast/helm-damage dependencies.
+Immediate priority is live user validation of the restored prototype helm, collision response/exact-astern behavior, mast entanglement/carpenter release, angle-sensitive full-sail ignition/fire control and enemy-information hiding. Then continue morale/surrender/boarding and the remaining mast/helm-damage dependencies.
 
 ## Branch discipline
 
