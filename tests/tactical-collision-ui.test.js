@@ -128,15 +128,17 @@ test('carpenter cut party has deterministic 50 percent success and clears an ent
   assert.equal(other.entangledWith, null);
 });
 
-test('full-sail firing risk is 20 percent baseline and 30 percent when wind enters firing side', () => {
+test('full-sail firing risk is 10 percent normally 15 oblique and 20 with direct incoming wind on firing side', () => {
   assert.equal(Combat.windEnteringBand(0, 90), 'ESTRIBOR');
   assert.equal(Combat.windEnteringBand(0, 270), 'BABOR');
-  assert.equal(Combat.fullSailFireRisk(0, 90, 'ESTRIBOR'), 0.30);
-  assert.equal(Combat.fullSailFireRisk(0, 90, 'BABOR'), 0.20);
-  assert.equal(Combat.fullSailFireRisk(0, 270, 'BABOR'), 0.30);
+  assert.equal(Combat.fullSailFireRisk(0, 0, 'ESTRIBOR'), 0.10);
+  assert.equal(Combat.fullSailFireRisk(0, 60, 'ESTRIBOR'), 0.15);
+  assert.equal(Combat.fullSailFireRisk(0, 90, 'ESTRIBOR'), 0.20);
+  assert.equal(Combat.fullSailFireRisk(0, 240, 'BABOR'), 0.15);
+  assert.equal(Combat.fullSailFireRisk(0, 270, 'BABOR'), 0.20);
 });
 
-test('an actual logged full-sail broadside can ignite level-one fire using the correct risk', () => {
+test('an actual logged full-sail broadside can ignite level-one fire using direct incoming wind risk', () => {
   const state = Core.buildInitialState(data, { windFromDeg: 90 });
   const ship = state.ships[0];
   Combat.initializeShipCombatState(ship);
@@ -148,9 +150,10 @@ test('an actual logged full-sail broadside can ignite level-one fire using the c
     windFromDeg: 90,
     order: { fire: true, fireBand: 'ESTRIBOR' }
   };
-  const outcome = Combat.applyFullSailIgnition(state, snapshot, [`${ship.name} dispara ESTRIBOR (COMPLETA)`], () => 0.299999);
+  const outcome = Combat.applyFullSailIgnition(state, snapshot, [`${ship.name} dispara ESTRIBOR (COMPLETA)`], () => 0.199999);
   assert.equal(outcome.checked, true);
-  assert.equal(outcome.chance, 0.30);
+  assert.equal(outcome.chance, 0.20);
+  assert.equal(outcome.exposure, 'DIRECT');
   assert.equal(outcome.ignited, true);
   assert.equal(ship.fireLevel, 1);
   assert.equal(ship.onFire, true);
